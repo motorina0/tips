@@ -1,0 +1,95 @@
+{
+  "id": "tips",
+  "name": "Tips",
+  "short_description": "Receive Lightning tips with short messages.",
+  "tile": "/tips/static/assets/icon.svg",
+  "version": "0.0.1",
+  "min_lnbits_version": "1.5.5",
+  "extension_type": "wasm",
+  "wasm": {
+    "module": "wasm/module.wasm",
+    "wit": "wasm/lnbits-extension.wit",
+    "world": "tips",
+    "host_api": "lnbits.core.extensions.ExtensionAPI",
+    "exports": [
+      {
+        "name": "create-tip-jar",
+        "visibility": "authenticated"
+      },
+      {
+        "name": "list-tip-jars",
+        "visibility": "authenticated"
+      },
+      {
+        "name": "get-public-tip-jar",
+        "visibility": "public"
+      },
+      {
+        "name": "create-tip-invoice",
+        "visibility": "public"
+      },
+      {
+        "name": "record-payment",
+        "visibility": "event"
+      }
+    ],
+    "resource_limits": {
+      "max_memory_bytes": 16777216,
+      "max_execution_ms": 1000,
+      "max_response_bytes": 65536
+    }
+  },
+  "ui": {
+    "entrypoint": "/tips/static/index.html",
+    "sandbox": true
+  },
+  "sdk": {
+    "wasm_js": "dev/src/lnbits-sdk.js",
+    "frontend_js": "static/lnbits-extension-sdk.js"
+  },
+  "routes": [
+    {
+      "path": "/",
+      "entrypoint": "/tips/static/index.html",
+      "auth": "user"
+    },
+    {
+      "path": "/public/{jar_id}",
+      "entrypoint": "/tips/static/index.html",
+      "auth": "public"
+    }
+  ],
+  "permissions": [
+    {
+      "id": "ext.storage.read_write",
+      "label": "Store tip jar data",
+      "description": "Read and write data in the tips extension storage namespace."
+    },
+    {
+      "id": "wallet.create_invoice",
+      "label": "Create tip invoices",
+      "description": "Create incoming Lightning invoices for selected wallets.",
+      "policy": {
+        "out": false,
+        "max_amount_sat": 10000000,
+        "required_extra_tag": "tips"
+      }
+    },
+    {
+      "id": "payments.watch",
+      "label": "Watch tip payments",
+      "description": "Receive payment events for invoices created by this extension.",
+      "policy": {
+        "tag": "tips"
+      }
+    }
+  ],
+  "payment_tags": ["tips"],
+  "public_kv_keys": ["public:jar:*", "public:tip:*"],
+  "secret_kv_keys": ["secret:jar-wallet:*"],
+  "build": {
+    "source": "dev/src/index.js",
+    "command": "cd lnbits/extensions/tips/dev && npm run build:wasm",
+    "output": "wasm/module.wasm"
+  }
+}

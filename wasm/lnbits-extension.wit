@@ -1,0 +1,91 @@
+package lnbits:extension;
+
+interface host {
+  record kv-get-request {
+    key: string
+  }
+
+  record kv-get-response {
+    value: option<string>
+  }
+
+  record kv-set-request {
+    key: string,
+    value: string
+  }
+
+  record kv-set-response {
+    ok: bool
+  }
+
+  record kv-list-request {
+    prefix: string
+  }
+
+  record kv-list-response {
+    keys: list<string>
+  }
+
+  record invoice-request {
+    wallet-id: string,
+    amount-sat: u64,
+    memo: string,
+    tag: string,
+    extra: list<tuple<string, string>>
+  }
+
+  record invoice-response {
+    payment-hash: string,
+    payment-request: string,
+    checking-id: string
+  }
+
+  record watch-payment-request {
+    payment-hash: string,
+    callback-export: string
+  }
+
+  record watch-payment-response {
+    ok: bool
+  }
+
+  record random-id-request {
+    prefix: string
+  }
+
+  record random-id-response {
+    id: string
+  }
+
+  record now-response {
+    timestamp: u64
+  }
+
+  record log-request {
+    level: string,
+    message: string
+  }
+
+  record log-response {
+    ok: bool
+  }
+
+  kv-get: func(request: kv-get-request) -> kv-get-response;
+  kv-set: func(request: kv-set-request) -> kv-set-response;
+  kv-list: func(request: kv-list-request) -> kv-list-response;
+  create-invoice: func(request: invoice-request) -> invoice-response;
+  watch-payment: func(request: watch-payment-request) -> watch-payment-response;
+  random-id: func(request: random-id-request) -> random-id-response;
+  now: func() -> now-response;
+  log: func(request: log-request) -> log-response;
+}
+
+world tips {
+  import host;
+
+  export create-tip-jar: func(request-json: string) -> string;
+  export list-tip-jars: func(request-json: string) -> string;
+  export get-public-tip-jar: func(request-json: string) -> string;
+  export create-tip-invoice: func(request-json: string) -> string;
+  export record-payment: func(event-json: string) -> string;
+}

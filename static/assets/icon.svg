@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Tips extension icon</title>
+  <rect width="64" height="64" rx="12" fill="#0f766e"/>
+  <path d="M31 8 15 36h14l-3 20 23-32H35l5-16h-9Z" fill="#facc15"/>
+  <path d="M18 42h13l-1 8 10-14H27l4-14-13 20Z" fill="#ffffff" opacity=".78"/>
+</svg>

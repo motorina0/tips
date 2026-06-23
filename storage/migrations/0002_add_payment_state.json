@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "description": "Track paid status and payment lookup metadata for tips.",
+  "operations": [
+    {
+      "op": "add_field",
+      "collection": "tips",
+      "prefix": "public:tip:",
+      "field": "paid",
+      "type": "boolean",
+      "default": false
+    },
+    {
+      "op": "add_field",
+      "collection": "tips",
+      "prefix": "public:tip:",
+      "field": "paid_at",
+      "type": "integer|null",
+      "default": null
+    },
+    {
+      "op": "copy_field",
+      "collection": "tips",
+      "from_prefix": "public:tip:",
+      "to_prefix": "private:tip:",
+      "field": "payment_hash"
+    },
+    {
+      "op": "create_index",
+      "collection": "tips",
+      "name": "tips_by_payment_hash",
+      "prefix": "private:tip:",
+      "field": "payment_hash"
+    }
+  ]
+}

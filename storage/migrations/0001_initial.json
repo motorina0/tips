@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "description": "Create the initial tips storage collections.",
+  "operations": [
+    {
+      "op": "create_collection",
+      "collection": "tip_jars",
+      "public_prefix": "public:jar:",
+      "secret_prefix": "secret:jar-wallet:",
+      "fields": {
+        "id": "string",
+        "title": "string",
+        "description": "string",
+        "slug": "string",
+        "suggested_amounts": "array:number",
+        "thank_you_message": "string",
+        "created_at": "integer",
+        "updated_at": "integer"
+      },
+      "secret_fields": {
+        "wallet_id": "string"
+      }
+    },
+    {
+      "op": "create_collection",
+      "collection": "tips",
+      "public_prefix": "public:tip:",
+      "private_prefix": "private:tip:",
+      "fields": {
+        "id": "string",
+        "jar_id": "string",
+        "amount_sat": "integer",
+        "name": "string",
+        "message": "string",
+        "payment_hash": "string",
+        "created_at": "integer"
+      }
+    },
+    {
+      "op": "create_index",
+      "collection": "tips",
+      "name": "tips_by_jar",
+      "prefix": "public:tip:",
+      "field": "jar_id"
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tips</title>
+    <link rel="stylesheet" href="./app.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <img src="./assets/icon.svg" alt="" />
+          <div>
+            <h1>Tips</h1>
+            <p>Lightning tips with short public messages.</p>
+          </div>
+        </div>
+        <div class="status" id="runtime-status">mock runtime</div>
+      </header>
+
+      <section class="layout">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Create Jar</h2>
+          </div>
+          <form id="jar-form" class="form">
+            <label>
+              Title
+              <input name="title" value="Support the project" maxlength="80" />
+            </label>
+            <label>
+              Description
+              <textarea name="description" maxlength="280">Leave a tip and a short message.</textarea>
+            </label>
+            <label>
+              Wallet reference
+              <input name="walletId" value="wallet_demo" maxlength="128" />
+            </label>
+            <label>
+              Suggested amounts
+              <input name="suggestedAmounts" value="100,500,1000" />
+            </label>
+            <label>
+              Thank you message
+              <input name="thankYouMessage" value="Thanks for the tip." maxlength="160" />
+            </label>
+            <button type="submit">Create</button>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Public Page</h2>
+            <select id="jar-select" aria-label="Tip jar"></select>
+          </div>
+          <div id="public-page" class="public-page"></div>
+          <form id="tip-form" class="form compact">
+            <label>
+              Amount
+              <input name="amountSat" inputmode="numeric" value="500" />
+            </label>
+            <label>
+              Name
+              <input name="name" value="Satoshi" maxlength="60" />
+            </label>
+            <label>
+              Message
+              <textarea name="message" maxlength="280">Keep building.</textarea>
+            </label>
+            <button type="submit">Create Invoice</button>
+          </form>
+        </div>
+
+        <div class="panel span">
+          <div class="panel-header">
+            <h2>Result</h2>
+          </div>
+          <pre id="result">{}</pre>
+        </div>
+      </section>
+    </main>
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>

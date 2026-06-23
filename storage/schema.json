@@ -1,0 +1,49 @@
+{
+  "version": 2,
+  "collections": {
+    "tip_jars": {
+      "public_prefix": "public:jar:",
+      "secret_prefix": "secret:jar-wallet:",
+      "fields": {
+        "id": "string",
+        "title": "string",
+        "description": "string",
+        "slug": "string",
+        "suggested_amounts": "array:number",
+        "thank_you_message": "string",
+        "created_at": "integer",
+        "updated_at": "integer"
+      },
+      "secret_fields": {
+        "wallet_id": "string"
+      }
+    },
+    "tips": {
+      "public_prefix": "public:tip:",
+      "private_prefix": "private:tip:",
+      "fields": {
+        "id": "string",
+        "jar_id": "string",
+        "amount_sat": "integer",
+        "name": "string",
+        "message": "string",
+        "payment_hash": "string",
+        "paid": "boolean",
+        "created_at": "integer",
+        "paid_at": "integer|null"
+      }
+    }
+  },
+  "indexes": [
+    {
+      "name": "tips_by_jar",
+      "prefix": "public:tip:",
+      "field": "jar_id"
+    },
+    {
+      "name": "tips_by_payment_hash",
+      "prefix": "private:tip:",
+      "field": "payment_hash"
+    }
+  ]
+}
