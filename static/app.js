@@ -31,7 +31,7 @@ jarForm.addEventListener('submit', async event => {
     thankYouMessage: form.get('thankYouMessage')
   }
 
-  const jar = await client.invoke('create-tip-jar', payload)
+  const jar = await client.createJar(payload)
   state.activeJarId = jar.id
   await refreshJars()
   showResult(jar)
@@ -47,7 +47,7 @@ tipForm.addEventListener('submit', async event => {
     message: form.get('message')
   }
 
-  const invoice = await client.invoke('create-tip-invoice', payload)
+  const invoice = await client.createInvoice(payload)
   showResult(invoice)
 })
 
@@ -59,7 +59,7 @@ jarSelect.addEventListener('change', async event => {
 await refreshJars()
 
 async function refreshJars() {
-  const response = await client.invoke('list-tip-jars', {})
+  const response = await client.listJars()
   state.jars = response.jars || []
 
   if (!state.activeJarId && state.jars.length) {
@@ -84,9 +84,7 @@ async function renderPublicPage() {
     return
   }
 
-  const response = await client.invoke('get-public-tip-jar', {
-    jarId: state.activeJarId
-  })
+  const response = await client.getPublicJar(state.activeJarId)
   const jar = response.jar
   const tips = response.tips || []
 

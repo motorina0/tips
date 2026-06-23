@@ -1,24 +1,41 @@
 export function createLNbitsExtensionClient({extensionId}) {
-  return {
-    async invoke(functionName, payload = {}) {
-      if (window.LNbitsExtension?.invoke) {
-        return unwrapRuntimeResponse(
-          await window.LNbitsExtension.invoke(functionName, payload)
-        )
-      }
+  const baseUrl = `/api/v1/ext/${extensionId}`
 
-      const response = await fetch(
-        `/api/v1/extensions/${extensionId}/invoke/${functionName}`,
-        {
-          method: 'POST',
-          headers: {'content-type': 'application/json'},
-          body: JSON.stringify(payload)
-        }
-      )
-      if (!response.ok) throw new Error(await response.text())
-      return unwrapRuntimeResponse(await response.json())
+  return {
+    createJar(payload) {
+      return request(`${baseUrl}/jars`, {
+        method: 'POST',
+        body: payload
+      })
+    },
+
+    listJars() {
+      return request(`${baseUrl}/jars`)
+    },
+
+    getPublicJar(jarId) {
+      return request(`${baseUrl}/jars/${encodeURIComponent(jarId)}`)
+    },
+
+    createInvoice(payload) {
+      return request(`${baseUrl}/invoice`, {
+        method: 'POST',
+        body: payload
+      })
     }
   }
+}
+
+async function request(url, {method = 'GET', body = null} = {}) {
+  const options = {method, headers: {}}
+  if (body) {
+    options.headers['content-type'] = 'application/json'
+    options.body = JSON.stringify(body)
+  }
+
+  const response = await fetch(url, options)
+  if (!response.ok) throw new Error(await response.text())
+  return unwrapRuntimeResponse(await response.json())
 }
 
 function unwrapRuntimeResponse(value) {

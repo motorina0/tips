@@ -59,6 +59,35 @@
       "auth": "public"
     }
   ],
+  "api_routes": [
+    {
+      "method": "POST",
+      "path": "/jars",
+      "export": "create-tip-jar",
+      "auth": "user"
+    },
+    {
+      "method": "GET",
+      "path": "/jars",
+      "export": "list-tip-jars",
+      "auth": "user"
+    },
+    {
+      "method": "GET",
+      "path": "/jars/{jar_id}",
+      "export": "get-public-tip-jar",
+      "auth": "public",
+      "path_params": {
+        "jar_id": "jarId"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/invoice",
+      "export": "create-tip-invoice",
+      "auth": "public"
+    }
+  ],
   "permissions": [
     {
       "id": "ext.storage.read_write",
