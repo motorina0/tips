@@ -1,8 +1,7 @@
 import {mkdir, readFile, writeFile} from 'node:fs/promises'
 import {dirname, resolve} from 'node:path'
-import {fileURLToPath} from 'node:url'
 
-const devDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const devDir = process.cwd()
 const sdkPath = resolve(devDir, 'src/lnbits-sdk.js')
 const entryPath = resolve(devDir, 'src/index.js')
 const outPath = resolve(devDir, 'dist/index.bundle.js')

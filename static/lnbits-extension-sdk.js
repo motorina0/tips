@@ -1,27 +1,22 @@
-export function createLNbitsExtensionClient({extensionId, mockInvoke}) {
+export function createLNbitsExtensionClient({extensionId}) {
   return {
     async invoke(functionName, payload = {}) {
-      try {
-        if (window.LNbitsExtension?.invoke) {
-          return unwrapRuntimeResponse(
-            await window.LNbitsExtension.invoke(functionName, payload)
-          )
-        }
-
-        const response = await fetch(
-          `/api/v1/extensions/${extensionId}/invoke/${functionName}`,
-          {
-            method: 'POST',
-            headers: {'content-type': 'application/json'},
-            body: JSON.stringify(payload)
-          }
+      if (window.LNbitsExtension?.invoke) {
+        return unwrapRuntimeResponse(
+          await window.LNbitsExtension.invoke(functionName, payload)
         )
-        if (!response.ok) throw new Error(await response.text())
-        return unwrapRuntimeResponse(await response.json())
-      } catch (error) {
-        if (!mockInvoke) throw error
-        return mockInvoke(functionName, payload)
       }
+
+      const response = await fetch(
+        `/api/v1/extensions/${extensionId}/invoke/${functionName}`,
+        {
+          method: 'POST',
+          headers: {'content-type': 'application/json'},
+          body: JSON.stringify(payload)
+        }
+      )
+      if (!response.ok) throw new Error(await response.text())
+      return unwrapRuntimeResponse(await response.json())
     }
   }
 }
