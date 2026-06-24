@@ -134,7 +134,7 @@ function optionElement(value, label) {
 }
 
 function walletLabel(wallet) {
-  return wallet.currency ? `${wallet.name} (${wallet.currency})` : wallet.name
+  return wallet.name
 }
 
 async function copyPublicUrl(url) {
