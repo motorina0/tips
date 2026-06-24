@@ -4,79 +4,109 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Tips</title>
+    <link rel="stylesheet" href="/static/bundle.min.css" />
     <link rel="stylesheet" href="/ext-assets/tips/app.css" />
   </head>
-  <body>
-    <main class="shell">
-      <header class="topbar">
-        <div class="brand">
-          <img src="/ext-assets/tips/assets/icon.svg" alt="" />
+  <body data-theme="bitcoin" class="body--dark">
+    <main class="shell q-pa-md" data-theme="bitcoin">
+      <header class="row items-center justify-between q-mb-md q-gutter-md">
+        <div class="row items-center q-gutter-sm">
+          <img
+            class="tips-icon"
+            src="/ext-assets/tips/assets/icon.svg"
+            alt=""
+          />
           <div>
-            <h1>Tips</h1>
-            <p>Lightning tips with short public messages.</p>
+            <h1 class="text-h4 text-weight-bold q-my-none">Tips</h1>
+            <p class="text-subtitle2 text-grey-5 q-my-none">
+              Lightning tips with short public messages.
+            </p>
           </div>
         </div>
-        <div class="status" id="runtime-status">wasm runtime</div>
+        <div
+          class="runtime-status text-caption text-grey-5 rounded-borders"
+          id="runtime-status"
+        >
+          wasm runtime
+        </div>
       </header>
 
-      <section class="layout">
-        <div class="panel">
-          <div class="panel-header">
-            <h2>Create Jar</h2>
+      <section class="row q-col-gutter-md">
+        <div class="col-12 col-md-6">
+          <div class="panel q-card q-card--dark q-pa-md full-height">
+            <div class="row items-center justify-between q-mb-md">
+              <h2 class="text-h6 text-weight-bold q-my-none">Create Jar</h2>
+            </div>
+            <form id="jar-form" class="form q-gutter-md">
+              <label>
+                <span class="text-caption text-grey-5">Title</span>
+                <input
+                  name="title"
+                  value="Support the project"
+                  maxlength="80"
+                />
+              </label>
+              <label>
+                <span class="text-caption text-grey-5">Description</span>
+                <textarea name="description" maxlength="280">Leave a tip and a short message.</textarea>
+              </label>
+              <label>
+                <span class="text-caption text-grey-5">Wallet reference</span>
+                <input name="walletId" value="wallet_demo" maxlength="128" />
+              </label>
+              <label>
+                <span class="text-caption text-grey-5">Suggested amounts</span>
+                <input name="suggestedAmounts" value="100,500,1000" />
+              </label>
+              <label>
+                <span class="text-caption text-grey-5">Thank you message</span>
+                <input
+                  name="thankYouMessage"
+                  value="Thanks for the tip."
+                  maxlength="160"
+                />
+              </label>
+              <button class="q-btn bg-primary text-white full-width" type="submit">
+                Create
+              </button>
+            </form>
           </div>
-          <form id="jar-form" class="form">
-            <label>
-              Title
-              <input name="title" value="Support the project" maxlength="80" />
-            </label>
-            <label>
-              Description
-              <textarea name="description" maxlength="280">Leave a tip and a short message.</textarea>
-            </label>
-            <label>
-              Wallet reference
-              <input name="walletId" value="wallet_demo" maxlength="128" />
-            </label>
-            <label>
-              Suggested amounts
-              <input name="suggestedAmounts" value="100,500,1000" />
-            </label>
-            <label>
-              Thank you message
-              <input name="thankYouMessage" value="Thanks for the tip." maxlength="160" />
-            </label>
-            <button type="submit">Create</button>
-          </form>
         </div>
 
-        <div class="panel">
-          <div class="panel-header">
-            <h2>Public Page</h2>
-            <select id="jar-select" aria-label="Tip jar"></select>
+        <div class="col-12 col-md-6">
+          <div class="panel q-card q-card--dark q-pa-md full-height">
+            <div class="row items-center justify-between q-mb-md q-gutter-sm">
+              <h2 class="text-h6 text-weight-bold q-my-none">Public Page</h2>
+              <select id="jar-select" aria-label="Tip jar"></select>
+            </div>
+            <div id="public-page" class="public-page q-mb-md"></div>
+            <form id="tip-form" class="form q-gutter-md">
+              <label>
+                <span class="text-caption text-grey-5">Amount</span>
+                <input name="amountSat" inputmode="numeric" value="500" />
+              </label>
+              <label>
+                <span class="text-caption text-grey-5">Name</span>
+                <input name="name" value="Satoshi" maxlength="60" />
+              </label>
+              <label>
+                <span class="text-caption text-grey-5">Message</span>
+                <textarea name="message" maxlength="280">Keep building.</textarea>
+              </label>
+              <button class="q-btn bg-primary text-white full-width" type="submit">
+                Create Invoice
+              </button>
+            </form>
           </div>
-          <div id="public-page" class="public-page"></div>
-          <form id="tip-form" class="form compact">
-            <label>
-              Amount
-              <input name="amountSat" inputmode="numeric" value="500" />
-            </label>
-            <label>
-              Name
-              <input name="name" value="Satoshi" maxlength="60" />
-            </label>
-            <label>
-              Message
-              <textarea name="message" maxlength="280">Keep building.</textarea>
-            </label>
-            <button type="submit">Create Invoice</button>
-          </form>
         </div>
 
-        <div class="panel span">
-          <div class="panel-header">
-            <h2>Result</h2>
+        <div class="col-12">
+          <div class="panel q-card q-card--dark q-pa-md">
+            <div class="row items-center justify-between q-mb-md">
+              <h2 class="text-h6 text-weight-bold q-my-none">Result</h2>
+            </div>
+            <pre id="result">{}</pre>
           </div>
-          <pre id="result">{}</pre>
         </div>
       </section>
     </main>
