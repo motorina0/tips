@@ -45,6 +45,12 @@ export function listTipJars(_requestJson) {
   })
 }
 
+export function listTipWallets(_requestJson) {
+  return runJson(() => {
+    return {wallets: wallet.listUserWallets()}
+  })
+}
+
 export function getPublicTipJar(requestJson) {
   return runJson(() => {
     const request = parseJsonObject(requestJson)

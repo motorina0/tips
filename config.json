@@ -21,6 +21,10 @@
         "visibility": "authenticated"
       },
       {
+        "name": "list-tip-wallets",
+        "visibility": "authenticated"
+      },
+      {
         "name": "get-public-tip-jar",
         "visibility": "public"
       },
@@ -77,6 +81,12 @@
     },
     {
       "method": "GET",
+      "path": "/wallets",
+      "export": "list-tip-wallets",
+      "auth": "user"
+    },
+    {
+      "method": "GET",
       "path": "/jars/{jar_id}",
       "export": "get-public-tip-jar",
       "auth": "public",
@@ -106,6 +116,11 @@
         "max_amount_sat": 10000000,
         "required_extra_tag": "tips"
       }
+    },
+    {
+      "id": "wallet.list",
+      "label": "List wallets",
+      "description": "Show the installing user's wallets so a tip jar can receive invoices."
     },
     {
       "id": "payments.watch",

@@ -3,6 +3,7 @@ import {
   kvGet,
   kvList,
   kvSet,
+  listUserWallets,
   log,
   now,
   randomId,
@@ -34,6 +35,10 @@ const extensionApi = {
           String(value)
         ])
       })
+    },
+
+    listUserWallets() {
+      return listUserWallets()
     }
   },
 
@@ -93,6 +98,10 @@ const storage = {
 }
 
 const wallet = {
+  listUserWallets() {
+    return extensionApi.wallet.listUserWallets().wallets || []
+  },
+
   createInvoice({walletId, amountSat, memo, tag, extra = {}}) {
     const invoiceExtra = {
       tag,
@@ -173,6 +182,12 @@ export function listTipJars(_requestJson) {
       .listValues(JAR_PREFIX)
       .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
     return {jars}
+  })
+}
+
+export function listTipWallets(_requestJson) {
+  return runJson(() => {
+    return {wallets: wallet.listUserWallets()}
   })
 }
 

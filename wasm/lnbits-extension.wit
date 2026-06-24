@@ -40,6 +40,16 @@ interface host {
     checking-id: string
   }
 
+  record user-wallet-summary {
+    id: string,
+    name: string,
+    currency: option<string>
+  }
+
+  record list-user-wallets-response {
+    wallets: list<user-wallet-summary>
+  }
+
   record watch-payment-request {
     payment-hash: string,
     callback-export: string
@@ -74,6 +84,7 @@ interface host {
   kv-set: func(request: kv-set-request) -> kv-set-response;
   kv-list: func(request: kv-list-request) -> kv-list-response;
   create-invoice: func(request: invoice-request) -> invoice-response;
+  list-user-wallets: func() -> list-user-wallets-response;
   watch-payment: func(request: watch-payment-request) -> watch-payment-response;
   random-id: func(request: random-id-request) -> random-id-response;
   now: func() -> now-response;
@@ -85,6 +96,7 @@ world tips {
 
   export create-tip-jar: func(request-json: string) -> string;
   export list-tip-jars: func(request-json: string) -> string;
+  export list-tip-wallets: func(request-json: string) -> string;
   export get-public-tip-jar: func(request-json: string) -> string;
   export create-tip-invoice: func(request-json: string) -> string;
   export record-payment: func(event-json: string) -> string;

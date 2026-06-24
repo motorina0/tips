@@ -28,6 +28,10 @@
         return request(`${baseUrl}/jars`)
       },
 
+      listWallets() {
+        return request(`${baseUrl}/wallets`)
+      },
+
       getPublicJar(jarId) {
         return request(`${baseUrl}/jars/${encodeURIComponent(jarId)}`)
       },

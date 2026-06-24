@@ -3,6 +3,7 @@ import {
   kvGet,
   kvList,
   kvSet,
+  listUserWallets,
   log,
   now,
   randomId,
@@ -34,6 +35,10 @@ export const extensionApi = {
           String(value)
         ])
       })
+    },
+
+    listUserWallets() {
+      return listUserWallets()
     }
   },
 
@@ -93,6 +98,10 @@ export const storage = {
 }
 
 export const wallet = {
+  listUserWallets() {
+    return extensionApi.wallet.listUserWallets().wallets || []
+  },
+
   createInvoice({walletId, amountSat, memo, tag, extra = {}}) {
     const invoiceExtra = {
       tag,

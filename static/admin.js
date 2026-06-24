@@ -7,7 +7,9 @@ const createJarButton = document.querySelector('#create-jar-button')
 const jarList = document.querySelector('#jar-list')
 const result = document.querySelector('#result')
 const runtimeStatus = document.querySelector('#runtime-status')
+const walletSelect = document.querySelector('#wallet-select')
 runtimeStatus.textContent = 'sandbox bridge'
+createJarButton.disabled = true
 
 createJarButton.addEventListener('click', async event => {
   event.preventDefault()
@@ -34,11 +36,36 @@ createJarButton.addEventListener('click', async event => {
   }
 })
 
-refreshJars().catch(showError)
+init().catch(showError)
+
+async function init() {
+  await Promise.all([refreshWallets(), refreshJars()])
+}
+
+async function refreshWallets() {
+  const response = await client.listWallets()
+  renderWalletOptions(response.wallets || [])
+}
 
 async function refreshJars() {
   const response = await client.listJars()
   renderJarList(response.jars || [])
+}
+
+function renderWalletOptions(wallets) {
+  walletSelect.innerHTML = ''
+  createJarButton.disabled = !wallets.length
+
+  if (!wallets.length) {
+    walletSelect.append(optionElement('', 'No receiving wallets available'))
+    walletSelect.disabled = true
+    return
+  }
+
+  walletSelect.disabled = false
+  for (const wallet of wallets) {
+    walletSelect.append(optionElement(wallet.id, walletLabel(wallet)))
+  }
 }
 
 function renderJarList(jars) {
@@ -97,6 +124,17 @@ function publicJarUrl(jarId) {
 
 function fieldValue(container, name) {
   return String(container.querySelector(`[name="${name}"]`)?.value || '')
+}
+
+function optionElement(value, label) {
+  const option = document.createElement('option')
+  option.value = value
+  option.textContent = label
+  return option
+}
+
+function walletLabel(wallet) {
+  return wallet.currency ? `${wallet.name} (${wallet.currency})` : wallet.name
 }
 
 async function copyPublicUrl(url) {
