@@ -1,4 +1,6 @@
 ;(function () {
+  let bridgePortPromise = null
+
   function createLNbitsExtensionClient({extensionId}) {
     const baseUrl = `/api/v1/ext/${extensionId}`
 
@@ -53,17 +55,70 @@
       return Promise.reject(new Error('LNbits extension bridge is not available.'))
     }
 
-    const id =
-      window.crypto?.randomUUID?.() ||
-      `request_${Date.now()}_${Math.random().toString(36).slice(2)}`
+    return getBridgePort().then(port => bridgePortRequest(port, message))
+  }
+
+  function getBridgePort() {
+    if (!bridgePortPromise) {
+      bridgePortPromise = connectBridge()
+    }
+    return bridgePortPromise
+  }
+
+  function connectBridge() {
+    const id = requestId()
+    const channel = new MessageChannel()
+    const parentOrigin = bridgeParentOrigin()
 
     return new Promise((resolve, reject) => {
       const timeout = window.setTimeout(() => {
-        window.removeEventListener('message', onMessage)
+        channel.port1.removeEventListener('message', onMessage)
+        channel.port1.close()
         reject(new Error('LNbits extension bridge timed out.'))
       }, 30000)
 
       function onMessage(event) {
+        if (event.currentTarget !== channel.port1) return
+
+        const response = event.data
+        if (
+          !response ||
+          response.type !== 'lnbits-extension:connected' ||
+          response.id !== id
+        ) {
+          return
+        }
+
+        window.clearTimeout(timeout)
+        channel.port1.removeEventListener('message', onMessage)
+        resolve(channel.port1)
+      }
+
+      channel.port1.addEventListener('message', onMessage)
+      channel.port1.start()
+      window.parent.postMessage(
+        {
+          type: 'lnbits-extension:connect',
+          id
+        },
+        parentOrigin,
+        [channel.port2]
+      )
+    })
+  }
+
+  function bridgePortRequest(port, message) {
+    const id = requestId()
+
+    return new Promise((resolve, reject) => {
+      const timeout = window.setTimeout(() => {
+        port.removeEventListener('message', onMessage)
+        reject(new Error('LNbits extension bridge timed out.'))
+      }, 30000)
+
+      function onMessage(event) {
+        if (event.currentTarget !== port) return
+
         const response = event.data
         if (
           !response ||
@@ -74,7 +129,7 @@
         }
 
         window.clearTimeout(timeout)
-        window.removeEventListener('message', onMessage)
+        port.removeEventListener('message', onMessage)
         if (response.ok === false) {
           reject(new Error(response.error || 'Extension call failed.'))
           return
@@ -82,16 +137,24 @@
         resolve(response.data)
       }
 
-      window.addEventListener('message', onMessage)
-      window.parent.postMessage(
-        {
-          type: 'lnbits-extension:request',
-          id,
-          ...message
-        },
-        '*'
-      )
+      port.addEventListener('message', onMessage)
+      port.postMessage({
+        type: 'lnbits-extension:request',
+        id,
+        ...message
+      })
     })
+  }
+
+  function requestId() {
+    return (
+      window.crypto?.randomUUID?.() ||
+      `request_${Date.now()}_${Math.random().toString(36).slice(2)}`
+    )
+  }
+
+  function bridgeParentOrigin() {
+    return new URL(window.location.href).origin
   }
 
   function unwrapRuntimeResponse(value) {

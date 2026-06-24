@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tips</title>
+    <link rel="stylesheet" href="/static/bundle.min.css" />
+    <link rel="stylesheet" href="/ext-assets/tips/app.css" />
+  </head>
+  <body data-theme="bitcoin" class="body--dark">
+    <main class="shell q-pa-md" data-theme="bitcoin">
+      <header class="row items-center justify-between q-mb-md q-gutter-md">
+        <div class="row items-center q-gutter-sm">
+          <img
+            class="tips-icon"
+            src="/ext-assets/tips/assets/icon.png"
+            alt=""
+          />
+          <div>
+            <h1 class="text-h4 text-weight-bold q-my-none">Tips</h1>
+            <p class="text-subtitle2 text-grey-5 q-my-none">
+              Send a public Lightning tip.
+            </p>
+          </div>
+        </div>
+        <div
+          class="runtime-status text-caption text-grey-5 rounded-borders"
+          id="runtime-status"
+        >
+          wasm runtime
+        </div>
+      </header>
+
+      <section class="row q-col-gutter-md">
+        <div class="col-12 col-md-7">
+          <div class="panel q-card q-card--dark q-pa-md full-height">
+            <div id="public-page" class="public-page"></div>
+          </div>
+        </div>
+
+        <div class="col-12 col-md-5">
+          <div class="panel q-card q-card--dark q-pa-md full-height">
+            <div class="row items-center justify-between q-mb-md">
+              <h2 class="text-h6 text-weight-bold q-my-none">Leave a Tip</h2>
+            </div>
+            <div id="tip-form" class="form q-gutter-md">
+              <label>
+                <span class="text-caption text-grey-5">Amount</span>
+                <input name="amountSat" inputmode="numeric" value="500" />
+              </label>
+              <label>
+                <span class="text-caption text-grey-5">Name</span>
+                <input name="name" value="Satoshi" maxlength="60" />
+              </label>
+              <label>
+                <span class="text-caption text-grey-5">Message</span>
+                <textarea name="message" maxlength="280">Keep building.</textarea>
+              </label>
+              <button
+                id="create-invoice-button"
+                class="q-btn bg-primary text-white full-width"
+                type="button"
+              >
+                Create Invoice
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="row q-col-gutter-md q-mt-md">
+        <div class="col-12">
+          <div class="panel q-card q-card--dark q-pa-md">
+            <div class="row items-center justify-between q-mb-md">
+              <h2 class="text-h6 text-weight-bold q-my-none">Invoice</h2>
+            </div>
+            <pre id="result">{}</pre>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script src="/ext-assets/tips/lnbits-extension-sdk.js"></script>
+    <script src="/ext-assets/tips/public.js"></script>
+  </body>
+</html>

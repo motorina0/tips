@@ -3,24 +3,24 @@ const client = window.createLNbitsExtensionClient({
 })
 
 const jarForm = document.querySelector('#jar-form')
+const createJarButton = document.querySelector('#create-jar-button')
 const jarList = document.querySelector('#jar-list')
 const result = document.querySelector('#result')
 const runtimeStatus = document.querySelector('#runtime-status')
 runtimeStatus.textContent = 'sandbox bridge'
 
-jarForm.addEventListener('submit', async event => {
+createJarButton.addEventListener('click', async event => {
   event.preventDefault()
   try {
-    const form = new FormData(jarForm)
     const payload = {
-      title: form.get('title'),
-      description: form.get('description'),
-      walletId: form.get('walletId'),
-      suggestedAmounts: String(form.get('suggestedAmounts') || '')
+      title: fieldValue(jarForm, 'title'),
+      description: fieldValue(jarForm, 'description'),
+      walletId: fieldValue(jarForm, 'walletId'),
+      suggestedAmounts: fieldValue(jarForm, 'suggestedAmounts')
         .split(',')
         .map(value => Number(value.trim()))
         .filter(Boolean),
-      thankYouMessage: form.get('thankYouMessage')
+      thankYouMessage: fieldValue(jarForm, 'thankYouMessage')
     }
 
     const jar = await client.createJar(payload)
@@ -93,6 +93,10 @@ function publicJarUrl(jarId) {
     `/ext/tips/jars/${encodeURIComponent(jarId)}`,
     window.location.href
   ).href
+}
+
+function fieldValue(container, name) {
+  return String(container.querySelector(`[name="${name}"]`)?.value || '')
 }
 
 async function copyPublicUrl(url) {

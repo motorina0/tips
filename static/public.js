@@ -7,20 +7,20 @@ const client = window.createLNbitsExtensionClient({
 })
 
 const tipForm = document.querySelector('#tip-form')
+const createInvoiceButton = document.querySelector('#create-invoice-button')
 const publicPage = document.querySelector('#public-page')
 const result = document.querySelector('#result')
 const runtimeStatus = document.querySelector('#runtime-status')
 runtimeStatus.textContent = 'sandbox bridge'
 
-tipForm.addEventListener('submit', async event => {
+createInvoiceButton.addEventListener('click', async event => {
   event.preventDefault()
   try {
-    const form = new FormData(tipForm)
     const payload = {
       jarId: state.jarId,
-      amountSat: Number(form.get('amountSat')),
-      name: form.get('name'),
-      message: form.get('message')
+      amountSat: Number(fieldValue(tipForm, 'amountSat')),
+      name: fieldValue(tipForm, 'name'),
+      message: fieldValue(tipForm, 'message')
     }
 
     const invoice = await client.createInvoice(payload)
@@ -83,6 +83,10 @@ async function renderPublicPage() {
 
 function showResult(value) {
   result.textContent = JSON.stringify(value, null, 2)
+}
+
+function fieldValue(container, name) {
+  return String(container.querySelector(`[name="${name}"]`)?.value || '')
 }
 
 function showError(error) {
