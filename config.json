@@ -2,7 +2,7 @@
   "id": "tips",
   "name": "Tips",
   "short_description": "Receive Lightning tips with short messages.",
-  "tile": "/tips/static/assets/icon.svg",
+  "tile": "/ext-assets/tips/assets/icon.svg",
   "version": "0.0.1",
   "min_lnbits_version": "1.5.5",
   "extension_type": "wasm",
@@ -40,23 +40,26 @@
     }
   },
   "ui": {
-    "entrypoint": "/tips/static/index.html",
+    "entrypoint": "/ext-assets/tips/index.html",
     "sandbox": true
   },
   "sdk": {
     "wasm_js": "dev/src/lnbits-sdk.js",
     "frontend_js": "static/lnbits-extension-sdk.js"
   },
-  "routes": [
+  "ui_routes": [
     {
-      "path": "/",
-      "entrypoint": "/tips/static/index.html",
+      "path": "/tips",
+      "entrypoint": "/ext-assets/tips/index.html",
       "auth": "user"
     },
     {
-      "path": "/public/{jar_id}",
-      "entrypoint": "/tips/static/index.html",
-      "auth": "public"
+      "path": "/tipjar/{jar_id}",
+      "entrypoint": "/ext-assets/tips/index.html",
+      "auth": "public",
+      "path_params": {
+        "jar_id": "jarId"
+      }
     }
   ],
   "api_routes": [

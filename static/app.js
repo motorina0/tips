@@ -1,11 +1,10 @@
-import {createLNbitsExtensionClient} from './lnbits-extension-sdk.js'
-
 const state = {
   jars: [],
-  activeJarId: null
+  activeJarId: null,
+  publicMode: false
 }
 
-const client = createLNbitsExtensionClient({
+const client = window.createLNbitsExtensionClient({
   extensionId: 'tips'
 })
 
@@ -15,50 +14,83 @@ const jarSelect = document.querySelector('#jar-select')
 const publicPage = document.querySelector('#public-page')
 const result = document.querySelector('#result')
 const runtimeStatus = document.querySelector('#runtime-status')
-runtimeStatus.textContent = 'wasm runtime'
+runtimeStatus.textContent = 'sandbox bridge'
 
 jarForm.addEventListener('submit', async event => {
   event.preventDefault()
-  const form = new FormData(jarForm)
-  const payload = {
-    title: form.get('title'),
-    description: form.get('description'),
-    walletId: form.get('walletId'),
-    suggestedAmounts: String(form.get('suggestedAmounts') || '')
-      .split(',')
-      .map(value => Number(value.trim()))
-      .filter(Boolean),
-    thankYouMessage: form.get('thankYouMessage')
-  }
+  try {
+    const form = new FormData(jarForm)
+    const payload = {
+      title: form.get('title'),
+      description: form.get('description'),
+      walletId: form.get('walletId'),
+      suggestedAmounts: String(form.get('suggestedAmounts') || '')
+        .split(',')
+        .map(value => Number(value.trim()))
+        .filter(Boolean),
+      thankYouMessage: form.get('thankYouMessage')
+    }
 
-  const jar = await client.createJar(payload)
-  state.activeJarId = jar.id
-  await refreshJars()
-  showResult(jar)
+    const jar = await client.createJar(payload)
+    state.activeJarId = jar.id
+    await refreshJars()
+    showResult(jar)
+  } catch (error) {
+    showError(error)
+  }
 })
 
 tipForm.addEventListener('submit', async event => {
   event.preventDefault()
-  const form = new FormData(tipForm)
-  const payload = {
-    jarId: state.activeJarId,
-    amountSat: Number(form.get('amountSat')),
-    name: form.get('name'),
-    message: form.get('message')
-  }
+  try {
+    const form = new FormData(tipForm)
+    const payload = {
+      jarId: state.activeJarId,
+      amountSat: Number(form.get('amountSat')),
+      name: form.get('name'),
+      message: form.get('message')
+    }
 
-  const invoice = await client.createInvoice(payload)
-  showResult(invoice)
+    const invoice = await client.createInvoice(payload)
+    showResult(invoice)
+  } catch (error) {
+    showError(error)
+  }
 })
 
 jarSelect.addEventListener('change', async event => {
-  state.activeJarId = event.target.value
-  await renderPublicPage()
+  try {
+    state.activeJarId = event.target.value
+    await renderPublicPage()
+  } catch (error) {
+    showError(error)
+  }
 })
 
-await refreshJars()
+init()
+
+async function init() {
+  try {
+    const context = await client.context()
+    state.publicMode = Boolean(context.public)
+    state.activeJarId = context.routeParams?.jarId || null
+
+    if (state.publicMode) {
+      jarForm.closest('.panel').hidden = true
+      jarSelect.hidden = true
+      await renderPublicPage()
+      return
+    }
+
+    await refreshJars()
+  } catch (error) {
+    showError(error)
+  }
+}
 
 async function refreshJars() {
+  if (state.publicMode) return
+
   const response = await client.listJars()
   state.jars = response.jars || []
 
@@ -119,4 +151,10 @@ async function renderPublicPage() {
 
 function showResult(value) {
   result.textContent = JSON.stringify(value, null, 2)
+}
+
+function showError(error) {
+  const message = error instanceof Error ? error.message : String(error)
+  result.textContent = JSON.stringify({error: message}, null, 2)
+  client.notifyError(message).catch(() => {})
 }
