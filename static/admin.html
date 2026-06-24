@@ -19,7 +19,7 @@
           <div>
             <h1 class="text-h4 text-weight-bold q-my-none">Tips</h1>
             <p class="text-subtitle2 text-grey-5 q-my-none">
-              Lightning tips with short public messages.
+              Manage public Lightning tip jars.
             </p>
           </div>
         </div>
@@ -31,8 +31,8 @@
         </div>
       </header>
 
-      <section id="private-view" class="row q-col-gutter-md">
-        <div class="col-12 col-md-6">
+      <section class="row q-col-gutter-md">
+        <div class="col-12 col-md-5">
           <div class="panel q-card q-card--dark q-pa-md full-height">
             <div class="row items-center justify-between q-mb-md">
               <h2 class="text-h6 text-weight-bold q-my-none">Create Jar</h2>
@@ -73,45 +73,12 @@
           </div>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-7">
           <div class="panel q-card q-card--dark q-pa-md full-height">
             <div class="row items-center justify-between q-mb-md">
               <h2 class="text-h6 text-weight-bold q-my-none">Jars</h2>
             </div>
             <div id="jar-list" class="jar-list"></div>
-          </div>
-        </div>
-      </section>
-
-      <section id="public-view" class="row q-col-gutter-md" hidden>
-        <div class="col-12 col-md-7">
-          <div class="panel q-card q-card--dark q-pa-md full-height">
-            <div id="public-page" class="public-page"></div>
-          </div>
-        </div>
-
-        <div class="col-12 col-md-5">
-          <div class="panel q-card q-card--dark q-pa-md full-height">
-            <div class="row items-center justify-between q-mb-md">
-              <h2 class="text-h6 text-weight-bold q-my-none">Leave a Tip</h2>
-            </div>
-            <form id="tip-form" class="form q-gutter-md">
-              <label>
-                <span class="text-caption text-grey-5">Amount</span>
-                <input name="amountSat" inputmode="numeric" value="500" />
-              </label>
-              <label>
-                <span class="text-caption text-grey-5">Name</span>
-                <input name="name" value="Satoshi" maxlength="60" />
-              </label>
-              <label>
-                <span class="text-caption text-grey-5">Message</span>
-                <textarea name="message" maxlength="280">Keep building.</textarea>
-              </label>
-              <button class="q-btn bg-primary text-white full-width" type="submit">
-                Create Invoice
-              </button>
-            </form>
           </div>
         </div>
       </section>
@@ -128,6 +95,6 @@
       </section>
     </main>
     <script src="/ext-assets/tips/lnbits-extension-sdk.js"></script>
-    <script src="/ext-assets/tips/app.js"></script>
+    <script src="/ext-assets/tips/admin.js"></script>
   </body>
 </html>

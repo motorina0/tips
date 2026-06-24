@@ -40,7 +40,7 @@
     }
   },
   "ui": {
-    "entrypoint": "/ext-assets/tips/index.html",
+    "entrypoint": "/ext-assets/tips/admin.html",
     "sandbox": true
   },
   "sdk": {
@@ -50,12 +50,12 @@
   "ui_routes": [
     {
       "path": "/tips",
-      "entrypoint": "/ext-assets/tips/index.html",
+      "entrypoint": "/ext-assets/tips/admin.html",
       "auth": "user"
     },
     {
-      "path": "/tipjar/{jar_id}",
-      "entrypoint": "/ext-assets/tips/index.html",
+      "path": "/tips/jars/{jar_id}",
+      "entrypoint": "/ext-assets/tips/public.html",
       "auth": "public",
       "path_params": {
         "jar_id": "jarId"

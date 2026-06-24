@@ -96,6 +96,37 @@ button.q-btn {
   background: rgba(255, 255, 255, 0.06);
 }
 
+.jar-list {
+  display: grid;
+  gap: 12px;
+}
+
+.jar-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.jar-row-content {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.jar-row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.jar-url {
+  font-size: 12px;
+}
+
 .muted {
   color: #bdbdbd;
 }
@@ -142,5 +173,9 @@ pre {
 @media (max-width: 760px) {
   .shell {
     padding: 12px;
+  }
+
+  .jar-row {
+    grid-template-columns: 1fr;
   }
 }

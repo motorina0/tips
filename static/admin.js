@@ -1,19 +1,9 @@
-const state = {
-  jars: [],
-  activeJarId: null,
-  publicMode: false
-}
-
 const client = window.createLNbitsExtensionClient({
   extensionId: 'tips'
 })
 
-const privateView = document.querySelector('#private-view')
-const publicView = document.querySelector('#public-view')
 const jarForm = document.querySelector('#jar-form')
-const tipForm = document.querySelector('#tip-form')
 const jarList = document.querySelector('#jar-list')
-const publicPage = document.querySelector('#public-page')
 const result = document.querySelector('#result')
 const runtimeStatus = document.querySelector('#runtime-status')
 runtimeStatus.textContent = 'sandbox bridge'
@@ -34,7 +24,6 @@ jarForm.addEventListener('submit', async event => {
     }
 
     const jar = await client.createJar(payload)
-    state.activeJarId = jar.id
     await refreshJars()
     showResult({
       jar,
@@ -45,68 +34,21 @@ jarForm.addEventListener('submit', async event => {
   }
 })
 
-tipForm.addEventListener('submit', async event => {
-  event.preventDefault()
-  try {
-    const form = new FormData(tipForm)
-    const payload = {
-      jarId: state.activeJarId,
-      amountSat: Number(form.get('amountSat')),
-      name: form.get('name'),
-      message: form.get('message')
-    }
-
-    const invoice = await client.createInvoice(payload)
-    showResult(invoice)
-  } catch (error) {
-    showError(error)
-  }
-})
-
-init()
-
-async function init() {
-  try {
-    const context = await client.context()
-    state.publicMode = Boolean(context.public)
-    state.activeJarId = context.routeParams?.jarId || null
-
-    if (state.publicMode) {
-      privateView.hidden = true
-      publicView.hidden = false
-      await renderPublicPage()
-      return
-    }
-
-    privateView.hidden = false
-    publicView.hidden = true
-    await refreshJars()
-  } catch (error) {
-    showError(error)
-  }
-}
+refreshJars().catch(showError)
 
 async function refreshJars() {
-  if (state.publicMode) return
-
   const response = await client.listJars()
-  state.jars = response.jars || []
-
-  if (!state.activeJarId && state.jars.length) {
-    state.activeJarId = state.jars[0].id
-  }
-
-  renderJarList()
+  renderJarList(response.jars || [])
 }
 
-function renderJarList() {
+function renderJarList(jars) {
   jarList.innerHTML = ''
-  if (!state.jars.length) {
+  if (!jars.length) {
     jarList.innerHTML = '<p class="muted q-my-none">No jars yet.</p>'
     return
   }
 
-  for (const jar of state.jars) {
+  for (const jar of jars) {
     const row = document.createElement('div')
     row.className = 'jar-row'
 
@@ -143,46 +85,6 @@ function renderJarList() {
     actions.append(copyButton)
     row.append(content, actions)
     jarList.append(row)
-  }
-}
-
-async function renderPublicPage() {
-  if (!state.activeJarId) {
-    publicPage.innerHTML = '<p class="muted">No tip jar yet.</p>'
-    return
-  }
-
-  const response = await client.getPublicJar(state.activeJarId)
-  const jar = response.jar
-  const tips = response.tips || []
-
-  publicPage.innerHTML = ''
-  const title = document.createElement('h2')
-  title.className = 'text-h5 text-weight-bold q-mt-none q-mb-sm'
-  title.textContent = jar.title
-  const description = document.createElement('p')
-  description.className = 'muted'
-  description.textContent = jar.description || 'Send a Lightning tip.'
-  const amounts = document.createElement('div')
-  amounts.className = 'amount-row'
-
-  for (const amount of jar.suggestedAmounts || []) {
-    const chip = document.createElement('span')
-    chip.className = 'amount-chip'
-    chip.textContent = `${amount} sats`
-    chip.addEventListener('click', () => {
-      tipForm.elements.amountSat.value = amount
-    })
-    amounts.append(chip)
-  }
-
-  publicPage.append(title, description, amounts)
-
-  if (tips.length) {
-    const recent = document.createElement('p')
-    recent.className = 'muted'
-    recent.textContent = `${tips.length} paid tip${tips.length === 1 ? '' : 's'}`
-    publicPage.append(recent)
   }
 }
 

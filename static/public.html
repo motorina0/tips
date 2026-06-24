@@ -19,7 +19,7 @@
           <div>
             <h1 class="text-h4 text-weight-bold q-my-none">Tips</h1>
             <p class="text-subtitle2 text-grey-5 q-my-none">
-              Lightning tips with short public messages.
+              Send a public Lightning tip.
             </p>
           </div>
         </div>
@@ -31,59 +31,7 @@
         </div>
       </header>
 
-      <section id="private-view" class="row q-col-gutter-md">
-        <div class="col-12 col-md-6">
-          <div class="panel q-card q-card--dark q-pa-md full-height">
-            <div class="row items-center justify-between q-mb-md">
-              <h2 class="text-h6 text-weight-bold q-my-none">Create Jar</h2>
-            </div>
-            <form id="jar-form" class="form q-gutter-md">
-              <label>
-                <span class="text-caption text-grey-5">Title</span>
-                <input
-                  name="title"
-                  value="Support the project"
-                  maxlength="80"
-                />
-              </label>
-              <label>
-                <span class="text-caption text-grey-5">Description</span>
-                <textarea name="description" maxlength="280">Leave a tip and a short message.</textarea>
-              </label>
-              <label>
-                <span class="text-caption text-grey-5">Wallet reference</span>
-                <input name="walletId" value="wallet_demo" maxlength="128" />
-              </label>
-              <label>
-                <span class="text-caption text-grey-5">Suggested amounts</span>
-                <input name="suggestedAmounts" value="100,500,1000" />
-              </label>
-              <label>
-                <span class="text-caption text-grey-5">Thank you message</span>
-                <input
-                  name="thankYouMessage"
-                  value="Thanks for the tip."
-                  maxlength="160"
-                />
-              </label>
-              <button class="q-btn bg-primary text-white full-width" type="submit">
-                Create
-              </button>
-            </form>
-          </div>
-        </div>
-
-        <div class="col-12 col-md-6">
-          <div class="panel q-card q-card--dark q-pa-md full-height">
-            <div class="row items-center justify-between q-mb-md">
-              <h2 class="text-h6 text-weight-bold q-my-none">Jars</h2>
-            </div>
-            <div id="jar-list" class="jar-list"></div>
-          </div>
-        </div>
-      </section>
-
-      <section id="public-view" class="row q-col-gutter-md" hidden>
+      <section class="row q-col-gutter-md">
         <div class="col-12 col-md-7">
           <div class="panel q-card q-card--dark q-pa-md full-height">
             <div id="public-page" class="public-page"></div>
@@ -120,7 +68,7 @@
         <div class="col-12">
           <div class="panel q-card q-card--dark q-pa-md">
             <div class="row items-center justify-between q-mb-md">
-              <h2 class="text-h6 text-weight-bold q-my-none">Result</h2>
+              <h2 class="text-h6 text-weight-bold q-my-none">Invoice</h2>
             </div>
             <pre id="result">{}</pre>
           </div>
@@ -128,6 +76,6 @@
       </section>
     </main>
     <script src="/ext-assets/tips/lnbits-extension-sdk.js"></script>
-    <script src="/ext-assets/tips/app.js"></script>
+    <script src="/ext-assets/tips/public.js"></script>
   </body>
 </html>
