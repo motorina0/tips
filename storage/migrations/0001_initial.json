@@ -3,38 +3,77 @@
   "description": "Create the initial tips storage collections.",
   "operations": [
     {
-      "op": "create_collection",
-      "collection": "tip_jars",
-      "public_prefix": "public:jar:",
-      "secret_prefix": "secret:jar-wallet:",
-      "fields": {
-        "id": "string",
-        "title": "string",
-        "description": "string",
-        "slug": "string",
-        "suggested_amounts": "array:number",
-        "thank_you_message": "string",
-        "created_at": "integer",
-        "updated_at": "integer"
-      },
-      "secret_fields": {
-        "wallet_id": "string"
-      }
+      "op": "create_table",
+      "table": "tip_jars",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "name": "slug",
+          "type": "string"
+        },
+        {
+          "name": "suggested_amounts",
+          "type": "number",
+          "list": true
+        },
+        {
+          "name": "thank_you_message",
+          "type": "string"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime"
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime"
+        }
+      ]
     },
     {
       "op": "create_collection",
       "collection": "tips",
-      "public_prefix": "public:tip:",
       "private_prefix": "private:tip:",
-      "fields": {
-        "id": "string",
-        "jar_id": "string",
-        "amount_sat": "integer",
-        "name": "string",
-        "message": "string",
-        "payment_hash": "string",
-        "created_at": "integer"
-      }
+      "fields": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "jar_id",
+          "type": "string"
+        },
+        {
+          "name": "amount_sat",
+          "type": "integer"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "message",
+          "type": "string"
+        },
+        {
+          "name": "payment_hash",
+          "type": "string"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime"
+        }
     },
     {
       "op": "create_index",
