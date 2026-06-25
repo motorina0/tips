@@ -29,6 +29,7 @@ interface host {
   record invoice-request {
     wallet-id: string,
     amount-sat: u64,
+    currency: string,
     memo: string,
     tag: string,
     extra: list<tuple<string, string>>

@@ -112,6 +112,7 @@ const wallet = {
     return extensionApi.wallet.createInvoice({
       walletId,
       amountSat,
+      currency: 'sat',
       memo,
       tag,
       extra: invoiceExtra
