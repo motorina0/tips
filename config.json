@@ -132,8 +132,6 @@
     }
   ],
   "payment_tags": ["tips"],
-  "public_kv_keys": ["public:jar:*", "public:tip:*"],
-  "secret_kv_keys": ["secret:jar-wallet:*"],
   "build": {
     "source": "dev/src/index.js",
     "command": "cd lnbits/extensions/tips/dev && npm run build:wasm",

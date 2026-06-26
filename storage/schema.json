@@ -16,6 +16,10 @@
           "type": "string"
         },
         {
+          "name": "wallet_id",
+          "type": "string"
+        },
+        {
           "name": "slug",
           "type": "string"
         },
@@ -82,10 +86,12 @@
   },
   "indexes": [
     {
+      "table": "tips",
       "name": "tips_by_jar",
       "field": "jar_id"
     },
     {
+      "table": "tips",
       "name": "tips_by_payment_hash",
       "field": "payment_hash"
     }

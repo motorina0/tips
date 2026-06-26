@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "description": "Store the receiving wallet on each tip jar.",
+  "operations": [
+    {
+      "op": "add_field",
+      "table": "tip_jars",
+      "field": "wallet_id",
+      "type": "string",
+      "default": ""
+    }
+  ]
+}

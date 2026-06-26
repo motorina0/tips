@@ -1,10 +1,8 @@
 import {payments, storage, system, wallet} from './lnbits-sdk.js'
 
 const TAG = 'tips'
-const JAR_PREFIX = 'public:jar:'
-const JAR_WALLET_PREFIX = 'secret:jar-wallet:'
-const TIP_PUBLIC_PREFIX = 'public:tip:'
-const TIP_PRIVATE_PREFIX = 'private:tip:'
+const JARS_TABLE = 'tip_jars'
+const TIPS_TABLE = 'tips'
 
 export function createTipJar(requestJson) {
   return runJson(() => {
@@ -22,25 +20,26 @@ export function createTipJar(requestJson) {
       id,
       title,
       description,
+      wallet_id: walletId,
       slug: cleanSlug(request.slug) || id,
-      suggestedAmounts,
-      thankYouMessage,
-      createdAt: timestamp,
-      updatedAt: timestamp
+      suggested_amounts: suggestedAmounts,
+      thank_you_message: thankYouMessage,
+      created_at: timestamp,
+      updated_at: timestamp
     }
 
-    storage.set(`${JAR_PREFIX}${id}`, jar)
-    storage.setText(`${JAR_WALLET_PREFIX}${id}`, walletId)
+    storage.set(JARS_TABLE, jar)
     system.log(`tips: created jar ${id}`)
-    return jar
+    return publicJar(jar)
   })
 }
 
 export function listTipJars(_requestJson) {
   return runJson(() => {
     const jars = storage
-      .listValues(JAR_PREFIX)
-      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+      .list(JARS_TABLE)
+      .sort((a, b) => (b.updated_at || 0) - (a.updated_at || 0))
+      .map(publicJar)
     return {jars}
   })
 }
@@ -57,7 +56,7 @@ export function getPublicTipJar(requestJson) {
     const jarId = requiredText(request.jarId, 'jarId', 128)
     const jar = getJar(jarId)
     const tips = listPublicTips(jarId)
-    return {jar, tips}
+    return {jar: publicJar(jar), tips}
   })
 }
 
@@ -66,7 +65,7 @@ export function createTipInvoice(requestJson) {
     const request = parseJsonObject(requestJson)
     const jarId = requiredText(request.jarId, 'jarId', 128)
     const jar = getJar(jarId)
-    const walletId = requiredStoredValue(`${JAR_WALLET_PREFIX}${jarId}`)
+    const walletId = requiredText(jar.wallet_id, 'walletId', 128)
     const amountSat = normalizeAmount(request.amountSat)
     const name = cleanText(request.name, 60) || 'Anonymous'
     const message = cleanText(request.message, 280)
@@ -74,31 +73,30 @@ export function createTipInvoice(requestJson) {
     const memo = message ? `${jar.title}: ${message}` : jar.title
 
     const invoice = wallet.createInvoice({
-        walletId,
-        amountSat,
-        memo,
-        tag: TAG,
-        extra: {
-          tip_id: tipId,
-          jar_id: jarId
-        }
-      })
+      walletId,
+      amountSat,
+      memo,
+      tag: TAG,
+      extra: {
+        tip_id: tipId,
+        jar_id: jarId
+      }
+    })
 
     const timestamp = system.now()
     const tip = {
       id: tipId,
-      jarId,
-      amountSat,
+      jar_id: jarId,
+      amount_sat: amountSat,
       name,
       message,
-      paymentHash: invoice.paymentHash,
+      payment_hash: invoice.paymentHash,
       paid: false,
-      createdAt: timestamp,
-      paidAt: null
+      created_at: timestamp,
+      paid_at: null
     }
 
-    storage.set(`${TIP_PRIVATE_PREFIX}${tipId}`, tip)
-    storage.set(`${TIP_PUBLIC_PREFIX}${tipId}`, publicTip(tip))
+    storage.set(TIPS_TABLE, tip)
     payments.watch(invoice.paymentHash, 'record-payment')
 
     return {
@@ -114,17 +112,12 @@ export function recordPayment(eventJson) {
   return runJson(() => {
     const event = parseJsonObject(eventJson)
     const paymentHash = requiredText(event.paymentHash, 'paymentHash', 128)
-    const keys = storage.list(TIP_PRIVATE_PREFIX)
+    const tips = storage.list(TIPS_TABLE, {payment_hash: paymentHash}, {limit: 1})
     const timestamp = system.now()
 
-    for (const key of keys) {
-      const tip = storage.get(key)
-      if (!tip) continue
-      if (tip.paymentHash !== paymentHash) continue
-
-      const paidTip = {...tip, paid: true, paidAt: timestamp}
-      storage.set(key, paidTip)
-      storage.set(`${TIP_PUBLIC_PREFIX}${paidTip.id}`, publicTip(paidTip))
+    for (const tip of tips) {
+      const paidTip = {...tip, paid: true, paid_at: timestamp}
+      storage.set(TIPS_TABLE, paidTip)
       return {ok: true, tipId: paidTip.id}
     }
 
@@ -152,28 +145,41 @@ function parseJsonObject(value) {
 }
 
 function getJar(jarId) {
-  const jar = storage.get(`${JAR_PREFIX}${jarId}`)
+  const jar = storage.get(JARS_TABLE, jarId)
   if (!jar) throw new Error('Tip jar not found.')
   return jar
 }
 
 function listPublicTips(jarId) {
   return storage
-    .listValues(TIP_PUBLIC_PREFIX)
-    .filter(tip => tip.jarId === jarId && tip.paid)
-    .sort((a, b) => (b.paidAt || b.createdAt || 0) - (a.paidAt || a.createdAt || 0))
+    .list(TIPS_TABLE, {jar_id: jarId, paid: true})
+    .sort((a, b) => (b.paid_at || b.created_at || 0) - (a.paid_at || a.created_at || 0))
+    .map(publicTip)
+}
+
+function publicJar(jar) {
+  return {
+    id: jar.id,
+    title: jar.title,
+    description: jar.description,
+    slug: jar.slug,
+    suggestedAmounts: jar.suggested_amounts,
+    thankYouMessage: jar.thank_you_message,
+    createdAt: jar.created_at,
+    updatedAt: jar.updated_at
+  }
 }
 
 function publicTip(tip) {
   return {
     id: tip.id,
-    jarId: tip.jarId,
-    amountSat: tip.amountSat,
+    jarId: tip.jar_id,
+    amountSat: tip.amount_sat,
     name: tip.name,
     message: tip.message,
     paid: tip.paid,
-    createdAt: tip.createdAt,
-    paidAt: tip.paidAt
+    createdAt: tip.created_at,
+    paidAt: tip.paid_at
   }
 }
 
@@ -220,10 +226,4 @@ function requiredText(value, field, maxLength) {
   const text = cleanText(value, maxLength)
   if (!text) throw new Error(`${field} is required.`)
   return text
-}
-
-function requiredStoredValue(key) {
-  const value = storage.getText(key)
-  if (!value) throw new Error(`Missing stored value for ${key}.`)
-  return value
 }

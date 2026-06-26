@@ -1,27 +1,40 @@
 import {
   createInvoice,
-  kvGet,
-  kvList,
-  kvSet,
   listUserWallets,
   log,
   now,
   randomId,
+  storageDelete,
+  storageGet,
+  storageList,
+  storageSet,
   watchPayment
 } from 'lnbits:extension/host'
 
 export const extensionApi = {
   storage: {
     get(input) {
-      return kvGet(input)
+      return storageGet(input)
     },
 
     set(input) {
-      return kvSet(input)
+      return storageSet({
+        table: input.table,
+        dataJson: JSON.stringify(input.data || {})
+      })
     },
 
     list(input) {
-      return kvList(input)
+      return storageList({
+        table: input.table,
+        filtersJson: JSON.stringify(input.filters || {}),
+        limit: input.limit || 100,
+        offset: input.offset || 0
+      })
+    },
+
+    delete(input) {
+      return storageDelete(input)
     }
   },
 
@@ -64,36 +77,29 @@ export const extensionApi = {
 }
 
 export const storage = {
-  get(key, fallback = null) {
-    const {value} = extensionApi.storage.get({key})
-    if (!value) return fallback
-    return JSON.parse(value)
+  get(table, id, fallback = null) {
+    const {dataJson} = extensionApi.storage.get({table, id})
+    if (!dataJson) return fallback
+    return JSON.parse(dataJson)
   },
 
-  set(key, value) {
-    extensionApi.storage.set({key, value: JSON.stringify(value)})
-    return value
+  set(table, data) {
+    extensionApi.storage.set({table, data})
+    return data
   },
 
-  getText(key, fallback = '') {
-    return extensionApi.storage.get({key}).value || fallback
+  list(table, filters = {}, options = {}) {
+    const {rowsJson} = extensionApi.storage.list({
+      table,
+      filters,
+      limit: options.limit || 100,
+      offset: options.offset || 0
+    })
+    return JSON.parse(rowsJson || '[]')
   },
 
-  setText(key, value) {
-    extensionApi.storage.set({key, value: String(value)})
-    return value
-  },
-
-  list(prefix) {
-    return extensionApi.storage.list({prefix}).keys
-  },
-
-  listValues(prefix) {
-    return extensionApi.storage
-      .list({prefix})
-      .keys.map(key => extensionApi.storage.get({key}).value)
-      .filter(Boolean)
-      .map(value => JSON.parse(value))
+  delete(table, id) {
+    extensionApi.storage.delete({table, id})
   }
 }
 

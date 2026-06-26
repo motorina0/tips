@@ -1,29 +1,42 @@
 package lnbits:extension;
 
 interface host {
-  record kv-get-request {
-    key: string
+  record storage-get-request {
+    table: string,
+    id: string
   }
 
-  record kv-get-response {
-    value: option<string>
+  record storage-get-response {
+    data-json: option<string>
   }
 
-  record kv-set-request {
-    key: string,
-    value: string
+  record storage-set-request {
+    table: string,
+    data-json: string
   }
 
-  record kv-set-response {
+  record storage-set-response {
     ok: bool
   }
 
-  record kv-list-request {
-    prefix: string
+  record storage-list-request {
+    table: string,
+    filters-json: string,
+    limit: u32,
+    offset: u32
   }
 
-  record kv-list-response {
-    keys: list<string>
+  record storage-list-response {
+    rows-json: string
+  }
+
+  record storage-delete-request {
+    table: string,
+    id: string
+  }
+
+  record storage-delete-response {
+    ok: bool
   }
 
   record invoice-request {
@@ -81,9 +94,10 @@ interface host {
     ok: bool
   }
 
-  kv-get: func(request: kv-get-request) -> kv-get-response;
-  kv-set: func(request: kv-set-request) -> kv-set-response;
-  kv-list: func(request: kv-list-request) -> kv-list-response;
+  storage-get: func(request: storage-get-request) -> storage-get-response;
+  storage-set: func(request: storage-set-request) -> storage-set-response;
+  storage-list: func(request: storage-list-request) -> storage-list-response;
+  storage-delete: func(request: storage-delete-request) -> storage-delete-response;
   create-invoice: func(request: invoice-request) -> invoice-response;
   list-user-wallets: func() -> list-user-wallets-response;
   watch-payment: func(request: watch-payment-request) -> watch-payment-response;
