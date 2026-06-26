@@ -179,6 +179,276 @@ const app = Vue.createApp({
       this.result = {error: message}
       client.notifyError(message).catch(() => {})
     }
+  },
+
+  render() {
+    const h = Vue.h
+    const component = name => Vue.resolveComponent(name)
+    const QBtn = component('q-btn')
+    const QCard = component('q-card')
+    const QForm = component('q-form')
+    const QIcon = component('q-icon')
+    const QInput = component('q-input')
+    const QSelect = component('q-select')
+    const QTable = component('q-table')
+    const QTd = component('q-td')
+    const QTooltip = component('q-tooltip')
+
+    const formInput = (field, props = {}, slots = undefined) =>
+      h(
+        QInput,
+        {
+          modelValue: this.form[field],
+          'onUpdate:modelValue': value => {
+            this.form[field] = value
+          },
+          dark: true,
+          filled: true,
+          dense: true,
+          ...props
+        },
+        slots
+      )
+
+    return h('main', {class: 'shell q-pa-md', 'data-theme': 'bitcoin'}, [
+      h('header', {class: 'row items-center justify-between q-mb-md q-gutter-md'}, [
+        h('div', {class: 'row items-center q-gutter-sm'}, [
+          h('img', {
+            class: 'tips-icon',
+            src: '/ext-assets/tips/assets/icon.png',
+            alt: ''
+          }),
+          h('div', [
+            h('h1', {class: 'text-h4 text-weight-bold q-my-none'}, 'Tips'),
+            h(
+              'p',
+              {class: 'text-subtitle2 text-grey-5 q-my-none'},
+              'Manage public Lightning tip jars.'
+            )
+          ])
+        ]),
+        h(
+          'div',
+          {class: 'runtime-status text-caption text-grey-5 rounded-borders'},
+          'sandbox bridge'
+        )
+      ]),
+
+      h('section', {class: 'row q-col-gutter-md'}, [
+        h('div', {class: 'col-12 col-md-4'}, [
+          h(
+            QCard,
+            {dark: true, class: 'panel q-pa-md full-height'},
+            {
+              default: () => [
+                h('div', {class: 'row items-center justify-between q-mb-md'}, [
+                  h(
+                    'h2',
+                    {class: 'text-h6 text-weight-bold q-my-none'},
+                    'Create Jar'
+                  )
+                ]),
+                h(
+                  QForm,
+                  {
+                    class: 'q-gutter-md',
+                    onSubmit: event => {
+                      event?.preventDefault?.()
+                      this.createJar()
+                    }
+                  },
+                  {
+                    default: () => [
+                      formInput('title', {
+                        label: 'Title',
+                        maxlength: 80
+                      }),
+                      formInput('description', {
+                        label: 'Description',
+                        type: 'textarea',
+                        maxlength: 280
+                      }),
+                      h(QSelect, {
+                        modelValue: this.form.walletId,
+                        'onUpdate:modelValue': value => {
+                          this.form.walletId = value
+                        },
+                        dark: true,
+                        filled: true,
+                        dense: true,
+                        emitValue: true,
+                        mapOptions: true,
+                        label: 'Wallet',
+                        options: this.walletOptions,
+                        disable: !this.walletOptions.length
+                      }),
+                      formInput('suggestedAmounts', {
+                        label: 'Suggested amounts'
+                      }),
+                      formInput('thankYouMessage', {
+                        label: 'Thank you message',
+                        maxlength: 160
+                      }),
+                      h(
+                        QBtn,
+                        {
+                          unelevated: true,
+                          color: 'primary',
+                          class: 'full-width',
+                          type: 'submit',
+                          disable: !this.walletOptions.length,
+                          loading: this.creating
+                        },
+                        {
+                          default: () => 'Create'
+                        }
+                      )
+                    ]
+                  }
+                )
+              ]
+            }
+          )
+        ]),
+
+        h('div', {class: 'col-12 col-md-8'}, [
+          h(
+            QCard,
+            {dark: true, class: 'panel q-pa-md full-height'},
+            {
+              default: () => [
+                h(
+                  QTable,
+                  {
+                    dark: true,
+                    flat: true,
+                    dense: true,
+                    binaryStateSort: true,
+                    rowKey: 'id',
+                    rows: this.jars,
+                    columns: this.jarsTable.columns,
+                    pagination: this.jarsTable.pagination,
+                    'onUpdate:pagination': value => {
+                      this.jarsTable.pagination = value
+                    },
+                    loading: this.jarsTable.loading,
+                    onRequest: props => this.fetchJars(props)
+                  },
+                  {
+                    top: () =>
+                      h(
+                        'div',
+                        {
+                          class:
+                            'row items-center justify-between full-width q-gutter-sm'
+                        },
+                        [
+                          h(
+                            'h2',
+                            {class: 'text-h6 text-weight-bold q-my-none'},
+                            'Jars'
+                          ),
+                          h(
+                            QInput,
+                            {
+                              modelValue: this.jarsTable.search,
+                              'onUpdate:modelValue': value => {
+                                this.jarsTable.search = value || ''
+                                this.searchJars()
+                              },
+                              dark: true,
+                              filled: true,
+                              dense: true,
+                              clearable: true,
+                              debounce: 300,
+                              placeholder: 'Search jars',
+                              class: 'jar-search'
+                            },
+                            {
+                              prepend: () => h(QIcon, {name: 'search'})
+                            }
+                          )
+                        ]
+                      ),
+
+                    'body-cell-publicUrl': props =>
+                      h(
+                        QTd,
+                        {props},
+                        {
+                          default: () =>
+                            h(QInput, {
+                              dark: true,
+                              dense: true,
+                              borderless: true,
+                              readonly: true,
+                              modelValue: this.publicJarUrl(props.row.id),
+                              inputClass: 'text-caption'
+                            })
+                        }
+                      ),
+
+                    'body-cell-actions': props =>
+                      h(
+                        QTd,
+                        {props},
+                        {
+                          default: () =>
+                            h(
+                              QBtn,
+                              {
+                                flat: true,
+                                dense: true,
+                                round: true,
+                                icon: 'content_copy',
+                                onClick: () =>
+                                  this.copyPublicUrl(
+                                    this.publicJarUrl(props.row.id)
+                                  )
+                              },
+                              {
+                                default: () => [
+                                  h(
+                                    QTooltip,
+                                    {},
+                                    {
+                                      default: () => 'Copy public link'
+                                    }
+                                  )
+                                ]
+                              }
+                            )
+                        }
+                      )
+                  }
+                )
+              ]
+            }
+          )
+        ])
+      ]),
+
+      h('section', {class: 'row q-col-gutter-md q-mt-md'}, [
+        h('div', {class: 'col-12'}, [
+          h(
+            QCard,
+            {dark: true, class: 'panel q-pa-md'},
+            {
+              default: () => [
+                h('div', {class: 'row items-center justify-between q-mb-md'}, [
+                  h(
+                    'h2',
+                    {class: 'text-h6 text-weight-bold q-my-none'},
+                    'Result'
+                  )
+                ]),
+                h('pre', this.resultText)
+              ]
+            }
+          )
+        ])
+      ])
+    ])
   }
 })
 
