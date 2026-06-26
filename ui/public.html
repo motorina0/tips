@@ -62,24 +62,64 @@
                 class="q-btn bg-primary text-white full-width"
                 type="button"
               >
-                Create Invoice
+                <span class="button-spinner" aria-hidden="true"></span>
+                <span class="button-label">Create Invoice</span>
               </button>
             </div>
           </div>
         </div>
       </section>
 
-      <section class="row q-col-gutter-md q-mt-md">
-        <div class="col-12">
-          <div class="panel q-card q-card--dark q-pa-md">
-            <div class="row items-center justify-between q-mb-md">
-              <h2 class="text-h6 text-weight-bold q-my-none">Invoice</h2>
-            </div>
-            <pre id="result">{}</pre>
+      <div
+        id="invoice-dialog"
+        class="invoice-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="invoice-dialog-title"
+        hidden
+      >
+        <button
+          class="invoice-dialog-backdrop"
+          type="button"
+          aria-label="Close invoice"
+          data-close-invoice
+        ></button>
+        <div class="invoice-dialog-card panel q-card q-card--dark q-pa-md">
+          <div class="row items-center justify-between q-mb-md">
+            <h2
+              id="invoice-dialog-title"
+              class="text-h6 text-weight-bold q-my-none"
+            >
+              Pay Invoice
+            </h2>
+            <button
+              class="invoice-close-button q-btn text-grey-5"
+              type="button"
+              data-close-invoice
+            >
+              Close
+            </button>
           </div>
+          <div id="invoice-qrcode" class="invoice-qrcode"></div>
+          <p id="invoice-status" class="invoice-status muted">
+            Waiting for payment
+          </p>
+          <a id="invoice-link" class="invoice-link q-btn bg-primary text-white">
+            Open Wallet
+          </a>
+          <button
+            id="copy-invoice-button"
+            class="q-btn invoice-copy-button text-grey-2"
+            type="button"
+          >
+            Copy Invoice
+          </button>
         </div>
-      </section>
+        <div id="confetti-layer" class="confetti-layer" aria-hidden="true"></div>
+      </div>
     </main>
+    <script src="/ext-assets/tips/_lnbits/vue.global.prod.js"></script>
+    <script src="/ext-assets/tips/_lnbits/qrcode.vue.browser.js"></script>
     <script src="/ext-assets/tips/lnbits-extension-sdk.js"></script>
     <script src="/ext-assets/tips/public.js"></script>
   </body>

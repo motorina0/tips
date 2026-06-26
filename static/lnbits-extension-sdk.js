@@ -1,5 +1,6 @@
 ;(function () {
   let bridgePortPromise = null
+  const bridgeEventHandlers = new Map()
 
   function createLNbitsExtensionClient({extensionId}) {
     const baseUrl = `/api/v1/ext/${extensionId}`
@@ -47,6 +48,10 @@
           method: 'POST',
           body: payload
         })
+      },
+
+      subscribePayment(paymentHash, callback) {
+        return subscribePayment(paymentHash, callback)
       }
     }
   }
@@ -101,6 +106,7 @@
 
         window.clearTimeout(timeout)
         channel.port1.removeEventListener('message', onMessage)
+        attachBridgeEvents(channel.port1)
         resolve(channel.port1)
       }
 
@@ -154,6 +160,51 @@
         ...message
       })
     })
+  }
+
+  function attachBridgeEvents(port) {
+    if (port.__lnbitsExtensionEventsAttached) return
+    port.__lnbitsExtensionEventsAttached = true
+    port.addEventListener('message', event => {
+      if (event.currentTarget !== port) return
+      const message = event.data
+      if (!message || message.type !== 'lnbits-extension:event') return
+
+      const handler = bridgeEventHandlers.get(message.subscriptionId)
+      if (!handler) return
+      handler(message)
+    })
+  }
+
+  function subscribePayment(paymentHash, callback) {
+    if (typeof callback !== 'function') {
+      return Promise.reject(new Error('Payment subscription needs a callback.'))
+    }
+
+    const subscriptionId = requestId()
+    bridgeEventHandlers.set(subscriptionId, callback)
+
+    return bridgeRequest({
+      action: 'payment.subscribe',
+      subscriptionId,
+      paymentHash
+    })
+      .then(() => {
+        let active = true
+        return () => {
+          if (!active) return
+          active = false
+          bridgeEventHandlers.delete(subscriptionId)
+          bridgeRequest({
+            action: 'payment.unsubscribe',
+            subscriptionId
+          }).catch(() => {})
+        }
+      })
+      .catch(error => {
+        bridgeEventHandlers.delete(subscriptionId)
+        throw error
+      })
   }
 
   function requestId() {

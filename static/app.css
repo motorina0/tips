@@ -93,6 +93,27 @@ button.q-btn {
   padding: 8px 16px;
 }
 
+button.q-btn:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.button-spinner {
+  display: none;
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.38);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: tips-spin 0.75s linear infinite;
+  vertical-align: -4px;
+}
+
+button[aria-busy='true'] .button-spinner {
+  display: inline-block;
+}
+
 .public-page {
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 4px;
@@ -176,8 +197,237 @@ pre {
   word-break: break-word;
 }
 
+.invoice-dialog {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.invoice-dialog[hidden] {
+  display: none;
+}
+
+.invoice-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.66);
+  cursor: default;
+}
+
+.invoice-dialog-card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 420px);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.48);
+}
+
+.invoice-close-button {
+  min-height: 34px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.invoice-qrcode {
+  display: grid;
+  min-height: 300px;
+  place-items: center;
+  padding: 10px;
+  border-radius: 4px;
+  background: white;
+}
+
+.invoice-qrcode svg {
+  display: block;
+  width: min(100%, 280px);
+  height: auto;
+}
+
+.invoice-status {
+  margin: 14px 0;
+  text-align: center;
+}
+
+.invoice-link,
+.invoice-copy-button {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.invoice-copy-button {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.confetti-layer {
+  position: fixed;
+  z-index: 2;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -18px;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: tips-confetti 1.4s ease-out forwards;
+}
+
+.confetti-piece:nth-child(4n + 1) {
+  background: var(--q-primary);
+}
+
+.confetti-piece:nth-child(4n + 2) {
+  background: #ffffff;
+}
+
+.confetti-piece:nth-child(4n + 3) {
+  background: #26a69a;
+}
+
+.confetti-piece:nth-child(4n + 4) {
+  background: #f2c037;
+}
+
+.confetti-piece-1,
+.confetti-piece-17 {
+  left: 8%;
+  --drift: 24vw;
+}
+
+.confetti-piece-2,
+.confetti-piece-18 {
+  left: 14%;
+  --drift: -18vw;
+  animation-delay: 0.03s;
+}
+
+.confetti-piece-3,
+.confetti-piece-19 {
+  left: 21%;
+  --drift: 16vw;
+  animation-delay: 0.06s;
+}
+
+.confetti-piece-4,
+.confetti-piece-20 {
+  left: 28%;
+  --drift: -22vw;
+  animation-delay: 0.09s;
+}
+
+.confetti-piece-5,
+.confetti-piece-21 {
+  left: 35%;
+  --drift: 20vw;
+  animation-delay: 0.12s;
+}
+
+.confetti-piece-6,
+.confetti-piece-22 {
+  left: 42%;
+  --drift: -14vw;
+  animation-delay: 0.15s;
+}
+
+.confetti-piece-7,
+.confetti-piece-23 {
+  left: 49%;
+  --drift: 18vw;
+  animation-delay: 0.18s;
+}
+
+.confetti-piece-8,
+.confetti-piece-24 {
+  left: 56%;
+  --drift: -24vw;
+  animation-delay: 0.21s;
+}
+
+.confetti-piece-9,
+.confetti-piece-25 {
+  left: 63%;
+  --drift: 14vw;
+  animation-delay: 0.24s;
+}
+
+.confetti-piece-10,
+.confetti-piece-26 {
+  left: 70%;
+  --drift: -18vw;
+  animation-delay: 0.27s;
+}
+
+.confetti-piece-11,
+.confetti-piece-27 {
+  left: 77%;
+  --drift: 22vw;
+  animation-delay: 0.3s;
+}
+
+.confetti-piece-12,
+.confetti-piece-28 {
+  left: 84%;
+  --drift: -20vw;
+  animation-delay: 0.33s;
+}
+
+.confetti-piece-13,
+.confetti-piece-29 {
+  left: 18%;
+  --drift: 28vw;
+  animation-delay: 0.36s;
+}
+
+.confetti-piece-14,
+.confetti-piece-30 {
+  left: 38%;
+  --drift: -28vw;
+  animation-delay: 0.39s;
+}
+
+.confetti-piece-15,
+.confetti-piece-31 {
+  left: 62%;
+  --drift: 26vw;
+  animation-delay: 0.42s;
+}
+
+.confetti-piece-16,
+.confetti-piece-32 {
+  left: 82%;
+  --drift: -26vw;
+  animation-delay: 0.45s;
+}
+
 .error {
   color: #ff8a80;
+}
+
+@keyframes tips-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes tips-confetti {
+  0% {
+    transform: translate3d(0, -20px, 0) rotate(0deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate3d(var(--drift), 78vh, 0) rotate(720deg);
+    opacity: 0;
+  }
 }
 
 @media (max-width: 760px) {
