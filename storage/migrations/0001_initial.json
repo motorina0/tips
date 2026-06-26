@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Create the initial tips storage collections.",
+  "description": "Create the initial tips storage tables.",
   "operations": [
     {
       "op": "create_table",
@@ -42,9 +42,8 @@
       ]
     },
     {
-      "op": "create_collection",
-      "collection": "tips",
-      "private_prefix": "private:tip:",
+      "op": "create_table",
+      "table": "tips",
       "fields": [
         {
           "name": "id",
@@ -74,12 +73,12 @@
           "name": "created_at",
           "type": "datetime"
         }
+      ]
     },
     {
       "op": "create_index",
-      "collection": "tips",
+      "table": "tips",
       "name": "tips_by_jar",
-      "prefix": "public:tip:",
       "field": "jar_id"
     }
   ]

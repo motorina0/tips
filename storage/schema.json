@@ -83,12 +83,10 @@
   "indexes": [
     {
       "name": "tips_by_jar",
-      "prefix": "public:tip:",
       "field": "jar_id"
     },
     {
       "name": "tips_by_payment_hash",
-      "prefix": "private:tip:",
       "field": "payment_hash"
     }
   ]
