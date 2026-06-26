@@ -18,6 +18,10 @@ body {
   letter-spacing: 0;
 }
 
+[v-cloak] {
+  display: none;
+}
+
 .shell {
   margin: 0 auto;
   max-width: 1180px;
@@ -52,9 +56,9 @@ textarea {
   font: inherit;
 }
 
-input,
-select,
-textarea {
+.form input,
+.form select,
+.form textarea {
   width: 100%;
   min-height: 40px;
   border: 1px solid rgba(255, 255, 255, 0.24);
@@ -65,17 +69,17 @@ textarea {
   outline: none;
 }
 
-input:focus,
-select:focus,
-textarea:focus {
+.form input:focus,
+.form select:focus,
+.form textarea:focus {
   border-color: var(--q-primary);
 }
 
-select {
+.form select {
   max-width: 100%;
 }
 
-textarea {
+.form textarea {
   min-height: 84px;
   resize: vertical;
 }
@@ -125,6 +129,12 @@ button.q-btn {
 
 .jar-url {
   font-size: 12px;
+}
+
+.jar-search {
+  min-width: 220px;
+  width: 30vw;
+  max-width: 320px;
 }
 
 .muted {
@@ -177,5 +187,10 @@ pre {
 
   .jar-row {
     grid-template-columns: 1fr;
+  }
+
+  .jar-search {
+    width: 100%;
+    max-width: none;
   }
 }

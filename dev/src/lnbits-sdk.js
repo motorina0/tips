@@ -6,6 +6,7 @@ import {
   randomId,
   storageDelete,
   storageGet,
+  storageGetPaginated,
   storageList,
   storageSet,
   watchPayment
@@ -29,6 +30,19 @@ export const extensionApi = {
         table: input.table,
         filtersJson: JSON.stringify(input.filters || {}),
         limit: input.limit || 100,
+        offset: input.offset || 0
+      })
+    },
+
+    getPaginated(input) {
+      return storageGetPaginated({
+        table: input.table,
+        filtersJson: JSON.stringify(input.filters || {}),
+        search: input.search || '',
+        searchFields: input.searchFields || [],
+        sortBy: input.sortBy || '',
+        descending: input.descending === true,
+        limit: input.limit || 25,
         offset: input.offset || 0
       })
     },
@@ -96,6 +110,23 @@ export const storage = {
       offset: options.offset || 0
     })
     return JSON.parse(rowsJson || '[]')
+  },
+
+  getPaginated(table, options = {}) {
+    const {rowsJson, total} = extensionApi.storage.getPaginated({
+      table,
+      filters: options.filters || {},
+      search: options.search || '',
+      searchFields: options.searchFields || [],
+      sortBy: options.sortBy || '',
+      descending: options.descending === true,
+      limit: options.limit || 25,
+      offset: options.offset || 0
+    })
+    return {
+      data: JSON.parse(rowsJson || '[]'),
+      total: Number(total || 0)
+    }
   },
 
   delete(table, id) {

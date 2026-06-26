@@ -20,6 +20,10 @@
           "type": "string"
         },
         {
+          "name": "wallet_name",
+          "type": "string"
+        },
+        {
           "name": "slug",
           "type": "string"
         },

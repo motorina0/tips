@@ -6,6 +6,7 @@ import {
   randomId,
   storageDelete,
   storageGet,
+  storageGetPaginated,
   storageList,
   storageSet,
   watchPayment
@@ -29,6 +30,19 @@ const extensionApi = {
         table: input.table,
         filtersJson: JSON.stringify(input.filters || {}),
         limit: input.limit || 100,
+        offset: input.offset || 0
+      })
+    },
+
+    getPaginated(input) {
+      return storageGetPaginated({
+        table: input.table,
+        filtersJson: JSON.stringify(input.filters || {}),
+        search: input.search || '',
+        searchFields: input.searchFields || [],
+        sortBy: input.sortBy || '',
+        descending: input.descending === true,
+        limit: input.limit || 25,
         offset: input.offset || 0
       })
     },
@@ -98,6 +112,23 @@ const storage = {
     return JSON.parse(rowsJson || '[]')
   },
 
+  getPaginated(table, options = {}) {
+    const {rowsJson, total} = extensionApi.storage.getPaginated({
+      table,
+      filters: options.filters || {},
+      search: options.search || '',
+      searchFields: options.searchFields || [],
+      sortBy: options.sortBy || '',
+      descending: options.descending === true,
+      limit: options.limit || 25,
+      offset: options.offset || 0
+    })
+    return {
+      data: JSON.parse(rowsJson || '[]'),
+      total: Number(total || 0)
+    }
+  },
+
   delete(table, id) {
     extensionApi.storage.delete({table, id})
   }
@@ -150,6 +181,7 @@ const system = {
 const TAG = 'tips'
 const JARS_TABLE = 'tip_jars'
 const TIPS_TABLE = 'tips'
+const JAR_SEARCH_FIELDS = ['title', 'description', 'wallet_name', 'thank_you_message']
 
 export function createTipJar(requestJson) {
   return runJson(() => {
@@ -158,6 +190,7 @@ export function createTipJar(requestJson) {
     const title = cleanText(request.title, 80) || 'Tip jar'
     const description = cleanText(request.description, 280)
     const walletId = requiredText(request.walletId, 'walletId', 128)
+    const walletName = cleanText(request.walletName, 120) || walletId
     const thankYouMessage =
       cleanText(request.thankYouMessage, 160) || 'Thanks for the tip.'
     const suggestedAmounts = normalizeAmounts(request.suggestedAmounts)
@@ -168,6 +201,7 @@ export function createTipJar(requestJson) {
       title,
       description,
       wallet_id: walletId,
+      wallet_name: walletName,
       slug: cleanSlug(request.slug) || id,
       suggested_amounts: suggestedAmounts,
       thank_you_message: thankYouMessage,
@@ -181,13 +215,25 @@ export function createTipJar(requestJson) {
   })
 }
 
-export function listTipJars(_requestJson) {
+export function listTipJars(requestJson) {
   return runJson(() => {
-    const jars = storage
-      .list(JARS_TABLE)
-      .sort((a, b) => (b.updated_at || 0) - (a.updated_at || 0))
-      .map(publicJar)
-    return {jars}
+    const request = parseJsonObject(requestJson)
+    const rowsPerPage = normalizePageSize(request.rowsPerPage)
+    const page = normalizePage(request.page)
+    const sortBy = request.sortBy === 'title' ? 'title' : ''
+    const response = storage.getPaginated(JARS_TABLE, {
+      search: cleanText(request.search, 256),
+      searchFields: JAR_SEARCH_FIELDS,
+      sortBy,
+      descending: request.descending === true || request.descending === 'true',
+      limit: rowsPerPage,
+      offset: (page - 1) * rowsPerPage
+    })
+
+    return {
+      jars: response.data.map(publicJar),
+      total: response.total
+    }
   })
 }
 
@@ -309,6 +355,7 @@ function publicJar(jar) {
     id: jar.id,
     title: jar.title,
     description: jar.description,
+    walletName: jar.wallet_name,
     slug: jar.slug,
     suggestedAmounts: jar.suggested_amounts,
     thankYouMessage: jar.thank_you_message,
@@ -347,6 +394,18 @@ function normalizeAmount(value) {
     throw new Error('amountSat exceeds the extension limit.')
   }
   return amount
+}
+
+function normalizePageSize(value) {
+  const size = Number(value || 10)
+  if (!Number.isInteger(size) || size <= 0) return 10
+  return Math.min(size, 1000)
+}
+
+function normalizePage(value) {
+  const page = Number(value || 1)
+  if (!Number.isInteger(page) || page <= 0) return 1
+  return page
 }
 
 function cleanId(value) {

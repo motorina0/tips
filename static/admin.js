@@ -2,156 +2,185 @@ const client = window.createLNbitsExtensionClient({
   extensionId: 'tips'
 })
 
-const jarForm = document.querySelector('#jar-form')
-const createJarButton = document.querySelector('#create-jar-button')
-const jarList = document.querySelector('#jar-list')
-const result = document.querySelector('#result')
-const runtimeStatus = document.querySelector('#runtime-status')
-const walletSelect = document.querySelector('#wallet-select')
-runtimeStatus.textContent = 'sandbox bridge'
-createJarButton.disabled = true
-
-createJarButton.addEventListener('click', async event => {
-  event.preventDefault()
-  try {
-    const payload = {
-      title: fieldValue(jarForm, 'title'),
-      description: fieldValue(jarForm, 'description'),
-      walletId: fieldValue(jarForm, 'walletId'),
-      suggestedAmounts: fieldValue(jarForm, 'suggestedAmounts')
-        .split(',')
-        .map(value => Number(value.trim()))
-        .filter(Boolean),
-      thankYouMessage: fieldValue(jarForm, 'thankYouMessage')
+const app = Vue.createApp({
+  data() {
+    return {
+      creating: false,
+      form: {
+        title: 'Support the project',
+        description: 'Leave a tip and a short message.',
+        walletId: null,
+        suggestedAmounts: '100,500,1000',
+        thankYouMessage: 'Thanks for the tip.'
+      },
+      jars: [],
+      jarsTable: {
+        columns: [
+          {
+            name: 'title',
+            align: 'left',
+            label: 'Title',
+            field: 'title',
+            sortable: true
+          },
+          {
+            name: 'walletName',
+            align: 'left',
+            label: 'Wallet',
+            field: 'walletName',
+            sortable: false
+          },
+          {
+            name: 'description',
+            align: 'left',
+            label: 'Description',
+            field: 'description',
+            sortable: false
+          },
+          {
+            name: 'publicUrl',
+            align: 'left',
+            label: 'Public Page',
+            field: 'id',
+            sortable: false
+          },
+          {
+            name: 'actions',
+            align: 'right',
+            label: '',
+            field: 'id',
+            sortable: false
+          }
+        ],
+        loading: false,
+        pagination: {
+          sortBy: 'title',
+          descending: false,
+          page: 1,
+          rowsPerPage: 10,
+          rowsNumber: 0
+        },
+        search: ''
+      },
+      result: {},
+      wallets: []
     }
+  },
 
-    const jar = await client.createJar(payload)
-    await refreshJars()
-    showResult({
-      jar,
-      publicUrl: publicJarUrl(jar.id)
-    })
-  } catch (error) {
-    showError(error)
+  computed: {
+    resultText() {
+      return JSON.stringify(this.result, null, 2)
+    },
+
+    walletOptions() {
+      return this.wallets.map(wallet => ({
+        label: wallet.name,
+        value: wallet.id
+      }))
+    }
+  },
+
+  async mounted() {
+    await Promise.all([this.fetchWallets(), this.fetchJars()])
+  },
+
+  methods: {
+    async fetchWallets() {
+      try {
+        const response = await client.listWallets()
+        this.wallets = response.wallets || []
+        if (!this.form.walletId && this.wallets.length) {
+          this.form.walletId = this.wallets[0].id
+        }
+      } catch (error) {
+        this.showError(error)
+      }
+    },
+
+    async fetchJars(props = {}) {
+      const pagination = props.pagination || this.jarsTable.pagination
+      this.jarsTable.loading = true
+      try {
+        const response = await client.listJars({
+          page: pagination.page,
+          rowsPerPage: pagination.rowsPerPage,
+          sortBy: pagination.sortBy,
+          descending: pagination.descending === true,
+          search: this.jarsTable.search || ''
+        })
+        this.jars = response.jars || []
+        this.jarsTable.pagination = {
+          ...pagination,
+          rowsNumber: response.total || 0
+        }
+      } catch (error) {
+        this.showError(error)
+      } finally {
+        this.jarsTable.loading = false
+      }
+    },
+
+    async createJar() {
+      this.creating = true
+      try {
+        const wallet = this.wallets.find(
+          wallet => wallet.id === this.form.walletId
+        )
+        const jar = await client.createJar({
+          title: this.form.title,
+          description: this.form.description,
+          walletId: this.form.walletId,
+          walletName: wallet?.name || this.form.walletId,
+          suggestedAmounts: this.form.suggestedAmounts
+            .split(',')
+            .map(value => Number(value.trim()))
+            .filter(Boolean),
+          thankYouMessage: this.form.thankYouMessage
+        })
+        await this.fetchJars()
+        this.showResult({
+          jar,
+          publicUrl: this.publicJarUrl(jar.id)
+        })
+      } catch (error) {
+        this.showError(error)
+      } finally {
+        this.creating = false
+      }
+    },
+
+    searchJars() {
+      this.jarsTable.pagination.page = 1
+      this.fetchJars()
+    },
+
+    publicJarUrl(jarId) {
+      return new URL(
+        `/ext/tips/jars/${encodeURIComponent(jarId)}`,
+        window.location.href
+      ).href
+    },
+
+    async copyPublicUrl(url) {
+      try {
+        await navigator.clipboard.writeText(url)
+        this.showResult({copied: true, publicUrl: url})
+      } catch (_error) {
+        this.showResult({publicUrl: url})
+      }
+    },
+
+    showResult(value) {
+      this.result = value
+    },
+
+    showError(error) {
+      const message = error instanceof Error ? error.message : String(error)
+      this.result = {error: message}
+      client.notifyError(message).catch(() => {})
+    }
   }
 })
 
-init().catch(showError)
-
-async function init() {
-  await Promise.all([refreshWallets(), refreshJars()])
-}
-
-async function refreshWallets() {
-  const response = await client.listWallets()
-  renderWalletOptions(response.wallets || [])
-}
-
-async function refreshJars() {
-  const response = await client.listJars()
-  renderJarList(response.jars || [])
-}
-
-function renderWalletOptions(wallets) {
-  walletSelect.innerHTML = ''
-  createJarButton.disabled = !wallets.length
-
-  if (!wallets.length) {
-    walletSelect.append(optionElement('', 'No receiving wallets available'))
-    walletSelect.disabled = true
-    return
-  }
-
-  walletSelect.disabled = false
-  for (const wallet of wallets) {
-    walletSelect.append(optionElement(wallet.id, walletLabel(wallet)))
-  }
-}
-
-function renderJarList(jars) {
-  jarList.innerHTML = ''
-  if (!jars.length) {
-    jarList.innerHTML = '<p class="muted q-my-none">No jars yet.</p>'
-    return
-  }
-
-  for (const jar of jars) {
-    const row = document.createElement('div')
-    row.className = 'jar-row'
-
-    const content = document.createElement('div')
-    content.className = 'jar-row-content'
-
-    const title = document.createElement('div')
-    title.className = 'text-subtitle1 text-weight-medium'
-    title.textContent = jar.title
-
-    const description = document.createElement('div')
-    description.className = 'text-caption text-grey-5'
-    description.textContent = jar.description || 'No description.'
-
-    const url = document.createElement('input')
-    url.className = 'jar-url'
-    url.readOnly = true
-    url.value = publicJarUrl(jar.id)
-    url.addEventListener('focus', () => url.select())
-
-    content.append(title, description, url)
-
-    const actions = document.createElement('div')
-    actions.className = 'jar-row-actions'
-
-    const copyButton = document.createElement('button')
-    copyButton.className = 'q-btn bg-primary text-white'
-    copyButton.type = 'button'
-    copyButton.textContent = 'Copy'
-    copyButton.addEventListener('click', async () => {
-      await copyPublicUrl(url.value)
-    })
-
-    actions.append(copyButton)
-    row.append(content, actions)
-    jarList.append(row)
-  }
-}
-
-function publicJarUrl(jarId) {
-  return new URL(
-    `/ext/tips/jars/${encodeURIComponent(jarId)}`,
-    window.location.href
-  ).href
-}
-
-function fieldValue(container, name) {
-  return String(container.querySelector(`[name="${name}"]`)?.value || '')
-}
-
-function optionElement(value, label) {
-  const option = document.createElement('option')
-  option.value = value
-  option.textContent = label
-  return option
-}
-
-function walletLabel(wallet) {
-  return wallet.name
-}
-
-async function copyPublicUrl(url) {
-  try {
-    await navigator.clipboard.writeText(url)
-    showResult({copied: true, publicUrl: url})
-  } catch (_error) {
-    showResult({publicUrl: url})
-  }
-}
-
-function showResult(value) {
-  result.textContent = JSON.stringify(value, null, 2)
-}
-
-function showError(error) {
-  const message = error instanceof Error ? error.message : String(error)
-  result.textContent = JSON.stringify({error: message}, null, 2)
-  client.notifyError(message).catch(() => {})
-}
+app.use(Quasar)
+app.mount('#tips-admin-app')

@@ -24,8 +24,14 @@
         })
       },
 
-      listJars() {
-        return request(`${baseUrl}/jars`)
+      listJars(params = {}) {
+        const query = new URLSearchParams()
+        for (const [key, value] of Object.entries(params)) {
+          if (value === undefined || value === null || value === '') continue
+          query.set(key, String(value))
+        }
+        const suffix = query.toString() ? `?${query.toString()}` : ''
+        return request(`${baseUrl}/jars${suffix}`)
       },
 
       listWallets() {

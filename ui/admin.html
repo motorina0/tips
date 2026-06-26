@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/ext-assets/tips/app.css" />
   </head>
   <body data-theme="bitcoin" class="body--dark">
-    <main class="shell q-pa-md" data-theme="bitcoin">
+    <main id="tips-admin-app" class="shell q-pa-md" data-theme="bitcoin" v-cloak>
       <header class="row items-center justify-between q-mb-md q-gutter-md">
         <div class="row items-center q-gutter-sm">
           <img
@@ -23,81 +23,154 @@
             </p>
           </div>
         </div>
-        <div
-          class="runtime-status text-caption text-grey-5 rounded-borders"
-          id="runtime-status"
-        >
-          wasm runtime
+        <div class="runtime-status text-caption text-grey-5 rounded-borders">
+          sandbox bridge
         </div>
       </header>
 
       <section class="row q-col-gutter-md">
-        <div class="col-12 col-md-5">
-          <div class="panel q-card q-card--dark q-pa-md full-height">
+        <div class="col-12 col-md-4">
+          <q-card dark class="panel q-pa-md full-height">
             <div class="row items-center justify-between q-mb-md">
               <h2 class="text-h6 text-weight-bold q-my-none">Create Jar</h2>
             </div>
-            <div id="jar-form" class="form q-gutter-md">
-              <label>
-                <span class="text-caption text-grey-5">Title</span>
-                <input
-                  name="title"
-                  value="Support the project"
-                  maxlength="80"
-                />
-              </label>
-              <label>
-                <span class="text-caption text-grey-5">Description</span>
-                <textarea name="description" maxlength="280">Leave a tip and a short message.</textarea>
-              </label>
-              <label>
-                <span class="text-caption text-grey-5">Wallet</span>
-                <select name="walletId" id="wallet-select"></select>
-              </label>
-              <label>
-                <span class="text-caption text-grey-5">Suggested amounts</span>
-                <input name="suggestedAmounts" value="100,500,1000" />
-              </label>
-              <label>
-                <span class="text-caption text-grey-5">Thank you message</span>
-                <input
-                  name="thankYouMessage"
-                  value="Thanks for the tip."
-                  maxlength="160"
-                />
-              </label>
-              <button
-                id="create-jar-button"
-                class="q-btn bg-primary text-white full-width"
-                type="button"
+            <q-form class="q-gutter-md" @submit.prevent="createJar">
+              <q-input
+                v-model="form.title"
+                dark
+                filled
+                dense
+                label="Title"
+                maxlength="80"
+              ></q-input>
+              <q-input
+                v-model="form.description"
+                dark
+                filled
+                dense
+                label="Description"
+                type="textarea"
+                maxlength="280"
+              ></q-input>
+              <q-select
+                v-model="form.walletId"
+                dark
+                filled
+                dense
+                emit-value
+                map-options
+                label="Wallet"
+                :options="walletOptions"
+                :disable="!walletOptions.length"
+              ></q-select>
+              <q-input
+                v-model="form.suggestedAmounts"
+                dark
+                filled
+                dense
+                label="Suggested amounts"
+              ></q-input>
+              <q-input
+                v-model="form.thankYouMessage"
+                dark
+                filled
+                dense
+                label="Thank you message"
+                maxlength="160"
+              ></q-input>
+              <q-btn
+                unelevated
+                color="primary"
+                class="full-width"
+                type="submit"
+                :disable="!walletOptions.length"
+                :loading="creating"
               >
                 Create
-              </button>
-            </div>
-          </div>
+              </q-btn>
+            </q-form>
+          </q-card>
         </div>
 
-        <div class="col-12 col-md-7">
-          <div class="panel q-card q-card--dark q-pa-md full-height">
-            <div class="row items-center justify-between q-mb-md">
-              <h2 class="text-h6 text-weight-bold q-my-none">Jars</h2>
-            </div>
-            <div id="jar-list" class="jar-list"></div>
-          </div>
+        <div class="col-12 col-md-8">
+          <q-card dark class="panel q-pa-md full-height">
+            <q-table
+              dark
+              flat
+              dense
+              binary-state-sort
+              row-key="id"
+              :rows="jars"
+              :columns="jarsTable.columns"
+              v-model:pagination="jarsTable.pagination"
+              :loading="jarsTable.loading"
+              @request="fetchJars"
+            >
+              <template v-slot:top>
+                <div class="row items-center justify-between full-width q-gutter-sm">
+                  <h2 class="text-h6 text-weight-bold q-my-none">Jars</h2>
+                  <q-input
+                    v-model="jarsTable.search"
+                    dark
+                    filled
+                    dense
+                    clearable
+                    debounce="300"
+                    placeholder="Search jars"
+                    class="jar-search"
+                    @update:model-value="searchJars"
+                  >
+                    <template v-slot:prepend>
+                      <q-icon name="search"></q-icon>
+                    </template>
+                  </q-input>
+                </div>
+              </template>
+
+              <template v-slot:body-cell-publicUrl="props">
+                <q-td :props="props">
+                  <q-input
+                    dark
+                    dense
+                    borderless
+                    readonly
+                    :model-value="publicJarUrl(props.row.id)"
+                    input-class="text-caption"
+                  ></q-input>
+                </q-td>
+              </template>
+
+              <template v-slot:body-cell-actions="props">
+                <q-td :props="props">
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    icon="content_copy"
+                    @click="copyPublicUrl(publicJarUrl(props.row.id))"
+                  >
+                    <q-tooltip>Copy public link</q-tooltip>
+                  </q-btn>
+                </q-td>
+              </template>
+            </q-table>
+          </q-card>
         </div>
       </section>
 
       <section class="row q-col-gutter-md q-mt-md">
         <div class="col-12">
-          <div class="panel q-card q-card--dark q-pa-md">
+          <q-card dark class="panel q-pa-md">
             <div class="row items-center justify-between q-mb-md">
               <h2 class="text-h6 text-weight-bold q-my-none">Result</h2>
             </div>
-            <pre id="result">{}</pre>
-          </div>
+            <pre>{{ resultText }}</pre>
+          </q-card>
         </div>
       </section>
     </main>
+    <script src="/static/vendor/vue.global.prod.js"></script>
+    <script src="/static/vendor/quasar.umd.prod.js"></script>
     <script src="/ext-assets/tips/lnbits-extension-sdk.js"></script>
     <script src="/ext-assets/tips/admin.js"></script>
   </body>
