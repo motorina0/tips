@@ -7,7 +7,6 @@ import {
   storageDelete,
   storageGet,
   storageGetPaginated,
-  storageList,
   storageSet,
   watchPayment
 } from 'lnbits:extension/host'
@@ -22,15 +21,6 @@ const extensionApi = {
       return storageSet({
         table: input.table,
         dataJson: JSON.stringify(input.data || {})
-      })
-    },
-
-    list(input) {
-      return storageList({
-        table: input.table,
-        filtersJson: JSON.stringify(input.filters || {}),
-        limit: input.limit || 100,
-        offset: input.offset || 0
       })
     },
 
@@ -100,16 +90,6 @@ const storage = {
   set(table, data) {
     extensionApi.storage.set({table, data})
     return data
-  },
-
-  list(table, filters = {}, options = {}) {
-    const {rowsJson} = extensionApi.storage.list({
-      table,
-      filters,
-      limit: options.limit || 100,
-      offset: options.offset || 0
-    })
-    return JSON.parse(rowsJson || '[]')
   },
 
   getPaginated(table, options = {}) {
@@ -305,7 +285,11 @@ export function recordPayment(eventJson) {
   return runJson(() => {
     const event = parseJsonObject(eventJson)
     const paymentHash = requiredText(event.paymentHash, 'paymentHash', 128)
-    const tips = storage.list(TIPS_TABLE, {payment_hash: paymentHash}, {limit: 1})
+    const tips = storage.getPaginated(TIPS_TABLE, {
+      filters: {payment_hash: paymentHash},
+      limit: 1,
+      offset: 0
+    }).data
     const timestamp = system.now()
 
     for (const tip of tips) {
@@ -345,8 +329,14 @@ function getJar(jarId) {
 
 function listPublicTips(jarId) {
   return storage
-    .list(TIPS_TABLE, {jar_id: jarId, paid: true})
-    .sort((a, b) => (b.paid_at || b.created_at || 0) - (a.paid_at || a.created_at || 0))
+    .getPaginated(TIPS_TABLE, {
+      filters: {jar_id: jarId, paid: true},
+      limit: 100,
+      offset: 0
+    })
+    .data.sort(
+      (a, b) => (b.paid_at || b.created_at || 0) - (a.paid_at || a.created_at || 0)
+    )
     .map(publicTip)
 }
 

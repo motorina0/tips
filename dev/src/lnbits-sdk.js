@@ -7,7 +7,6 @@ import {
   storageDelete,
   storageGet,
   storageGetPaginated,
-  storageList,
   storageSet,
   watchPayment
 } from 'lnbits:extension/host'
@@ -22,15 +21,6 @@ export const extensionApi = {
       return storageSet({
         table: input.table,
         dataJson: JSON.stringify(input.data || {})
-      })
-    },
-
-    list(input) {
-      return storageList({
-        table: input.table,
-        filtersJson: JSON.stringify(input.filters || {}),
-        limit: input.limit || 100,
-        offset: input.offset || 0
       })
     },
 
@@ -100,16 +90,6 @@ export const storage = {
   set(table, data) {
     extensionApi.storage.set({table, data})
     return data
-  },
-
-  list(table, filters = {}, options = {}) {
-    const {rowsJson} = extensionApi.storage.list({
-      table,
-      filters,
-      limit: options.limit || 100,
-      offset: options.offset || 0
-    })
-    return JSON.parse(rowsJson || '[]')
   },
 
   getPaginated(table, options = {}) {
