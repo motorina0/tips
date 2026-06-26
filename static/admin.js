@@ -235,7 +235,7 @@ const app = Vue.createApp({
       ]),
 
       h('section', {class: 'row q-col-gutter-md'}, [
-        h('div', {class: 'col-12 col-md-4'}, [
+        h('div', {class: 'col-12'}, [
           h(
             QCard,
             {dark: true, class: 'panel q-pa-md full-height'},
@@ -251,11 +251,7 @@ const app = Vue.createApp({
                 h(
                   QForm,
                   {
-                    class: 'q-gutter-md',
-                    onSubmit: event => {
-                      event?.preventDefault?.()
-                      this.createJar()
-                    }
+                    class: 'q-gutter-md'
                   },
                   {
                     default: () => [
@@ -295,9 +291,10 @@ const app = Vue.createApp({
                           unelevated: true,
                           color: 'primary',
                           class: 'full-width',
-                          type: 'submit',
+                          type: 'button',
                           disable: !this.walletOptions.length,
-                          loading: this.creating
+                          loading: this.creating,
+                          onClick: this.createJar
                         },
                         {
                           default: () => 'Create'
@@ -311,7 +308,7 @@ const app = Vue.createApp({
           )
         ]),
 
-        h('div', {class: 'col-12 col-md-8'}, [
+        h('div', {class: 'col-12'}, [
           h(
             QCard,
             {dark: true, class: 'panel q-pa-md full-height'},
