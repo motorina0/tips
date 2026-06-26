@@ -62,16 +62,11 @@ const app = Vue.createApp({
         },
         search: ''
       },
-      result: {},
       wallets: []
     }
   },
 
   computed: {
-    resultText() {
-      return JSON.stringify(this.result, null, 2)
-    },
-
     walletOptions() {
       return this.wallets.map(wallet => ({
         label: wallet.name,
@@ -126,7 +121,7 @@ const app = Vue.createApp({
         const wallet = this.wallets.find(
           wallet => wallet.id === this.form.walletId
         )
-        const jar = await client.createJar({
+        await client.createJar({
           title: this.form.title,
           description: this.form.description,
           walletId: this.form.walletId,
@@ -138,10 +133,6 @@ const app = Vue.createApp({
           thankYouMessage: this.form.thankYouMessage
         })
         await this.fetchJars()
-        this.showResult({
-          jar,
-          publicUrl: this.publicJarUrl(jar.id)
-        })
       } catch (error) {
         this.showError(error)
       } finally {
@@ -162,21 +153,11 @@ const app = Vue.createApp({
     },
 
     async copyPublicUrl(url) {
-      try {
-        await navigator.clipboard.writeText(url)
-        this.showResult({copied: true, publicUrl: url})
-      } catch (_error) {
-        this.showResult({publicUrl: url})
-      }
-    },
-
-    showResult(value) {
-      this.result = value
+      await navigator.clipboard.writeText(url).catch(() => {})
     },
 
     showError(error) {
       const message = error instanceof Error ? error.message : String(error)
-      this.result = {error: message}
       client.notifyError(message).catch(() => {})
     }
   },
@@ -419,27 +400,6 @@ const app = Vue.createApp({
                       )
                   }
                 )
-              ]
-            }
-          )
-        ])
-      ]),
-
-      h('section', {class: 'row q-col-gutter-md q-mt-md'}, [
-        h('div', {class: 'col-12'}, [
-          h(
-            QCard,
-            {dark: true, class: 'panel q-pa-md'},
-            {
-              default: () => [
-                h('div', {class: 'row items-center justify-between q-mb-md'}, [
-                  h(
-                    'h2',
-                    {class: 'text-h6 text-weight-bold q-my-none'},
-                    'Result'
-                  )
-                ]),
-                h('pre', this.resultText)
               ]
             }
           )
