@@ -11,7 +11,7 @@ const entry = await readFile(entryPath, 'utf8')
 
 const bundledSdk = sdk.replace(/^export const /gm, 'const ')
 const bundledEntry = entry.replace(
-  /^import \{payments, storage, system, wallet\} from '\.\/lnbits-sdk\.js'\n\n/,
+  /^import \{[^}]+\} from '\.\/lnbits-sdk\.js'\n\n/,
   ''
 )
 

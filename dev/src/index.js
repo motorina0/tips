@@ -1,4 +1,4 @@
-import {payments, storage, system, wallet} from './lnbits-sdk.js'
+import {storage, system, wallet} from './lnbits-sdk.js'
 
 const TAG = 'tips'
 const JARS_TABLE = 'tip_jars'
@@ -112,7 +112,6 @@ export function createTipInvoice(requestJson) {
     }
 
     storage.set(TIPS_TABLE, tip)
-    payments.watch(invoice.paymentHash, 'record-payment')
 
     return {
       tipId,

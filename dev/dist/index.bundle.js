@@ -7,8 +7,7 @@ import {
   storageDelete,
   storageGet,
   storageGetPaginated,
-  storageSet,
-  watchPayment
+  storageSet
 } from 'lnbits:extension/host'
 
 const extensionApi = {
@@ -56,12 +55,6 @@ const extensionApi = {
 
     listUserWallets() {
       return listUserWallets()
-    }
-  },
-
-  payments: {
-    watch(input) {
-      return watchPayment(input)
     }
   },
 
@@ -122,7 +115,6 @@ const wallet = {
   createInvoice({walletId, amountSat, memo, tag, extra = {}}) {
     const invoiceExtra = {
       tag,
-      extension: tag,
       ...extra
     }
 
@@ -134,12 +126,6 @@ const wallet = {
       tag,
       extra: invoiceExtra
     })
-  }
-}
-
-const payments = {
-  watch(paymentHash, handlerName) {
-    extensionApi.payments.watch({paymentHash, callbackExport: handlerName})
   }
 }
 
@@ -270,7 +256,6 @@ export function createTipInvoice(requestJson) {
     }
 
     storage.set(TIPS_TABLE, tip)
-    payments.watch(invoice.paymentHash, 'record-payment')
 
     return {
       tipId,

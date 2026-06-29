@@ -51,6 +51,9 @@
     "wasm_js": "dev/src/lnbits-sdk.js",
     "frontend_js": "static/lnbits-extension-sdk.js"
   },
+  "events": {
+    "onInvoicePaid": "record-payment"
+  },
   "ui_routes": [
     {
       "path": "/tips",
@@ -121,17 +124,8 @@
       "id": "wallet.list",
       "label": "List wallets",
       "description": "Show the installing user's wallets so a tip jar can receive invoices."
-    },
-    {
-      "id": "payments.watch",
-      "label": "Watch tip payments",
-      "description": "Receive payment events for invoices created by this extension.",
-      "policy": {
-        "tag": "tips"
-      }
     }
   ],
-  "payment_tags": ["tips"],
   "build": {
     "source": "dev/src/index.js",
     "command": "cd lnbits/extensions/tips/dev && npm run build:wasm",
