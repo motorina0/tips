@@ -119,9 +119,14 @@
   ],
   "permissions": [
     {
-      "id": "ext.storage.read_write",
+      "id": "ext.storage.read",
+      "label": "Read tip jar data",
+      "description": "Read data in the tips extension storage namespace."
+    },
+    {
+      "id": "ext.storage.write",
       "label": "Store tip jar data",
-      "description": "Read and write data in the tips extension storage namespace."
+      "description": "Write data in the tips extension storage namespace."
     },
     {
       "id": "wallet.create_invoice",

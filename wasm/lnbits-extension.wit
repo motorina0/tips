@@ -69,15 +69,6 @@ interface host {
     wallets: list<user-wallet-summary>
   }
 
-  record watch-payment-request {
-    payment-hash: string,
-    callback-export: string
-  }
-
-  record watch-payment-response {
-    ok: bool
-  }
-
   record random-id-request {
     prefix: string
   }
@@ -105,7 +96,6 @@ interface host {
   storage-delete: func(request: storage-delete-request) -> storage-delete-response;
   create-invoice: func(request: invoice-request) -> invoice-response;
   list-user-wallets: func() -> list-user-wallets-response;
-  watch-payment: func(request: watch-payment-request) -> watch-payment-response;
   random-id: func(request: random-id-request) -> random-id-response;
   now: func() -> now-response;
   log: func(request: log-request) -> log-response;
