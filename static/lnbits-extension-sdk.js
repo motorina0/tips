@@ -35,6 +35,18 @@
         return request(`${baseUrl}/jars${suffix}`)
       },
 
+      listTips(jarId, params = {}) {
+        const query = new URLSearchParams()
+        for (const [key, value] of Object.entries(params)) {
+          if (value === undefined || value === null || value === '') continue
+          query.set(key, String(value))
+        }
+        const suffix = query.toString() ? `?${query.toString()}` : ''
+        return request(
+          `${baseUrl}/jars/${encodeURIComponent(jarId)}/tips${suffix}`
+        )
+      },
+
       listWallets() {
         return request(`${baseUrl}/wallets`)
       },

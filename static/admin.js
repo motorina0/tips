@@ -62,6 +62,77 @@ const app = Vue.createApp({
         },
         search: ''
       },
+      selectedJar: null,
+      tips: [],
+      tipsTable: {
+        columns: [
+          {
+            name: 'createdAt',
+            align: 'left',
+            label: 'Created',
+            field: 'createdAt',
+            sortable: true
+          },
+          {
+            name: 'jarTitle',
+            align: 'left',
+            label: 'Jar',
+            field: 'jarTitle',
+            sortable: false
+          },
+          {
+            name: 'amountSat',
+            align: 'right',
+            label: 'Amount',
+            field: 'amountSat',
+            sortable: true
+          },
+          {
+            name: 'name',
+            align: 'left',
+            label: 'Name',
+            field: 'name',
+            sortable: true
+          },
+          {
+            name: 'message',
+            align: 'left',
+            label: 'Message',
+            field: 'message',
+            sortable: false
+          },
+          {
+            name: 'paid',
+            align: 'left',
+            label: 'Status',
+            field: 'paid',
+            sortable: true
+          },
+          {
+            name: 'paidAt',
+            align: 'left',
+            label: 'Paid at',
+            field: 'paidAt',
+            sortable: true
+          },
+          {
+            name: 'paymentHash',
+            align: 'left',
+            label: 'Payment hash',
+            field: 'paymentHash',
+            sortable: true
+          }
+        ],
+        loading: false,
+        pagination: {
+          sortBy: 'createdAt',
+          descending: true,
+          page: 1,
+          rowsPerPage: 10,
+          rowsNumber: 0
+        },
+        search: ''
+      },
       wallets: []
     }
   },
@@ -108,6 +179,17 @@ const app = Vue.createApp({
           ...pagination,
           rowsNumber: response.total || 0
         }
+        if (
+          this.selectedJar &&
+          this.jars.some(jar => jar.id === this.selectedJar.id)
+        ) {
+          this.selectedJar = this.jars.find(
+            jar => jar.id === this.selectedJar.id
+          )
+        }
+        if (!this.selectedJar && this.jars.length) {
+          await this.selectJar(this.jars[0])
+        }
       } catch (error) {
         this.showError(error)
       } finally {
@@ -121,7 +203,7 @@ const app = Vue.createApp({
         const wallet = this.wallets.find(
           wallet => wallet.id === this.form.walletId
         )
-        await client.createJar({
+        const jar = await client.createJar({
           title: this.form.title,
           description: this.form.description,
           walletId: this.form.walletId,
@@ -133,6 +215,9 @@ const app = Vue.createApp({
           thankYouMessage: this.form.thankYouMessage
         })
         await this.fetchJars()
+        if (jar?.id) {
+          await this.selectJar(jar)
+        }
       } catch (error) {
         this.showError(error)
       } finally {
@@ -143,6 +228,46 @@ const app = Vue.createApp({
     searchJars() {
       this.jarsTable.pagination.page = 1
       this.fetchJars()
+    },
+
+    async selectJar(jar) {
+      this.selectedJar = jar
+      this.tipsTable.pagination.page = 1
+      await this.fetchTips()
+    },
+
+    async fetchTips(props = {}) {
+      if (!this.selectedJar?.id) {
+        this.tips = []
+        this.tipsTable.pagination.rowsNumber = 0
+        return
+      }
+
+      const pagination = props.pagination || this.tipsTable.pagination
+      this.tipsTable.loading = true
+      try {
+        const response = await client.listTips(this.selectedJar.id, {
+          page: pagination.page,
+          rowsPerPage: pagination.rowsPerPage,
+          sortBy: pagination.sortBy,
+          descending: pagination.descending === true,
+          search: this.tipsTable.search || ''
+        })
+        this.tips = response.tips || []
+        this.tipsTable.pagination = {
+          ...pagination,
+          rowsNumber: response.total || 0
+        }
+      } catch (error) {
+        this.showError(error)
+      } finally {
+        this.tipsTable.loading = false
+      }
+    },
+
+    searchTips() {
+      this.tipsTable.pagination.page = 1
+      this.fetchTips()
     },
 
     publicJarUrl(jarId) {
@@ -159,6 +284,12 @@ const app = Vue.createApp({
     showError(error) {
       const message = error instanceof Error ? error.message : String(error)
       client.notifyError(message).catch(() => {})
+    },
+
+    formatTimestamp(timestamp) {
+      if (!timestamp) return '-'
+      const millis = Number(timestamp) < 1000000000000 ? timestamp * 1000 : timestamp
+      return new Date(millis).toLocaleString()
     }
   },
 
@@ -310,7 +441,8 @@ const app = Vue.createApp({
                       this.jarsTable.pagination = value
                     },
                     loading: this.jarsTable.loading,
-                    onRequest: props => this.fetchJars(props)
+                    onRequest: props => this.fetchJars(props),
+                    onRowClick: (_event, row) => this.selectJar(row)
                   },
                   {
                     top: () =>
@@ -396,6 +528,141 @@ const app = Vue.createApp({
                                 ]
                               }
                             )
+                        }
+                      )
+                  }
+                )
+              ]
+            }
+          )
+        ]),
+
+        h('div', {class: 'col-12'}, [
+          h(
+            QCard,
+            {dark: true, class: 'panel q-pa-md full-height'},
+            {
+              default: () => [
+                h(
+                  QTable,
+                  {
+                    dark: true,
+                    flat: true,
+                    dense: true,
+                    binaryStateSort: true,
+                    rowKey: 'id',
+                    rows: this.tips,
+                    columns: this.tipsTable.columns,
+                    pagination: this.tipsTable.pagination,
+                    'onUpdate:pagination': value => {
+                      this.tipsTable.pagination = value
+                    },
+                    loading: this.tipsTable.loading,
+                    onRequest: props => this.fetchTips(props)
+                  },
+                  {
+                    top: () =>
+                      h(
+                        'div',
+                        {
+                          class:
+                            'row items-center justify-between full-width q-gutter-sm'
+                        },
+                        [
+                          h('div', [
+                            h(
+                              'h2',
+                              {class: 'text-h6 text-weight-bold q-my-none'},
+                              'Tips'
+                            ),
+                            h(
+                              'p',
+                              {class: 'text-caption text-grey-5 q-my-none'},
+                              this.selectedJar
+                                ? `Selected jar: ${this.selectedJar.title}`
+                                : 'Select a jar to view its tips.'
+                            )
+                          ]),
+                          h('div', {class: 'row items-center q-gutter-sm'}, [
+                            h(
+                              QInput,
+                              {
+                                modelValue: this.tipsTable.search,
+                                'onUpdate:modelValue': value => {
+                                  this.tipsTable.search = value || ''
+                                  this.searchTips()
+                                },
+                                dark: true,
+                                filled: true,
+                                dense: true,
+                                clearable: true,
+                                debounce: 300,
+                                placeholder: 'Search tips',
+                                class: 'jar-search',
+                                disable: !this.selectedJar
+                              },
+                              {
+                                prepend: () => h(QIcon, {name: 'search'})
+                              }
+                            ),
+                            h(
+                              QBtn,
+                              {
+                                flat: true,
+                                dense: true,
+                                label: 'Refresh',
+                                disable: !this.selectedJar,
+                                loading: this.tipsTable.loading,
+                                onClick: () => this.fetchTips()
+                              }
+                            )
+                          ])
+                        ]
+                      ),
+
+                    'body-cell-createdAt': props =>
+                      h(
+                        QTd,
+                        {props},
+                        {
+                          default: () => this.formatTimestamp(props.row.createdAt)
+                        }
+                      ),
+
+                    'body-cell-amountSat': props =>
+                      h(
+                        QTd,
+                        {props},
+                        {
+                          default: () => `${props.row.amountSat} sats`
+                        }
+                      ),
+
+                    'body-cell-paid': props =>
+                      h(
+                        QTd,
+                        {props},
+                        {
+                          default: () => (props.row.paid ? 'Paid' : 'Pending')
+                        }
+                      ),
+
+                    'body-cell-paidAt': props =>
+                      h(
+                        QTd,
+                        {props},
+                        {
+                          default: () => this.formatTimestamp(props.row.paidAt)
+                        }
+                      ),
+
+                    'body-cell-paymentHash': props =>
+                      h(
+                        QTd,
+                        {props},
+                        {
+                          default: () =>
+                            h('span', {class: 'text-caption'}, props.row.paymentHash)
                         }
                       )
                   }

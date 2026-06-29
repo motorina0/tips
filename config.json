@@ -21,6 +21,10 @@
         "visibility": "authenticated"
       },
       {
+        "name": "list-tip-jar-tips",
+        "visibility": "authenticated"
+      },
+      {
         "name": "list-tip-wallets",
         "visibility": "authenticated"
       },
@@ -81,6 +85,15 @@
       "path": "/jars",
       "export": "list-tip-jars",
       "auth": "user"
+    },
+    {
+      "method": "GET",
+      "path": "/jars/{jar_id}/tips",
+      "export": "list-tip-jar-tips",
+      "auth": "user",
+      "path_params": {
+        "jar_id": "jarId"
+      }
     },
     {
       "method": "GET",

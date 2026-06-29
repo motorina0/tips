@@ -148,6 +148,7 @@ const TAG = 'tips'
 const JARS_TABLE = 'tip_jars'
 const TIPS_TABLE = 'tips'
 const JAR_SEARCH_FIELDS = ['title', 'description', 'wallet_name', 'thank_you_message']
+const TIP_SEARCH_FIELDS = ['name', 'message', 'payment_hash']
 
 export function createTipJar(requestJson) {
   return runJson(() => {
@@ -198,6 +199,32 @@ export function listTipJars(requestJson) {
 
     return {
       jars: response.data.map(publicJar),
+      total: response.total
+    }
+  })
+}
+
+export function listTipJarTips(requestJson) {
+  return runJson(() => {
+    const request = parseJsonObject(requestJson)
+    const jarId = requiredText(request.jarId, 'jarId', 128)
+    const jar = getJar(jarId)
+    const rowsPerPage = normalizePageSize(request.rowsPerPage)
+    const page = normalizePage(request.page)
+    const sortBy = normalizeTipSortBy(request.sortBy)
+    const response = storage.getPaginated(TIPS_TABLE, {
+      filters: {jar_id: jarId},
+      search: cleanText(request.search, 256),
+      searchFields: TIP_SEARCH_FIELDS,
+      sortBy,
+      descending: request.descending === true || request.descending === 'true',
+      limit: rowsPerPage,
+      offset: (page - 1) * rowsPerPage
+    })
+
+    return {
+      jar: publicJar(jar),
+      tips: response.data.map(tip => privateTip(tip, jar)),
       total: response.total
     }
   })
@@ -352,6 +379,14 @@ function publicTip(tip) {
   }
 }
 
+function privateTip(tip, jar) {
+  return {
+    ...publicTip(tip),
+    jarTitle: jar.title,
+    paymentHash: tip.payment_hash
+  }
+}
+
 function normalizeAmounts(value) {
   const amounts = Array.isArray(value) ? value : [100, 500, 1000]
   const clean = amounts
@@ -381,6 +416,20 @@ function normalizePage(value) {
   const page = Number(value || 1)
   if (!Number.isInteger(page) || page <= 0) return 1
   return page
+}
+
+function normalizeTipSortBy(value) {
+  return (
+    {
+      amountSat: 'amount_sat',
+      createdAt: 'created_at',
+      jarTitle: 'jar_id',
+      name: 'name',
+      paid: 'paid',
+      paidAt: 'paid_at',
+      paymentHash: 'payment_hash'
+    }[value] || 'created_at'
+  )
 }
 
 function cleanId(value) {

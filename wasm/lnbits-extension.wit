@@ -116,6 +116,7 @@ world tips {
 
   export create-tip-jar: func(request-json: string) -> string;
   export list-tip-jars: func(request-json: string) -> string;
+  export list-tip-jar-tips: func(request-json: string) -> string;
   export list-tip-wallets: func(request-json: string) -> string;
   export get-public-tip-jar: func(request-json: string) -> string;
   export create-tip-invoice: func(request-json: string) -> string;
