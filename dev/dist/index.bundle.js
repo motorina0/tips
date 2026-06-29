@@ -6,6 +6,7 @@ import {
   randomId,
   storageDelete,
   storageGet,
+  storageGetPublic,
   storageGetPaginated,
   storageSet
 } from 'lnbits:extension/host'
@@ -14,6 +15,10 @@ const extensionApi = {
   storage: {
     get(input) {
       return storageGet(input)
+    },
+
+    getPublic(input) {
+      return storageGetPublic(input)
     },
 
     set(input) {
@@ -76,6 +81,12 @@ const extensionApi = {
 const storage = {
   get(table, id, fallback = null) {
     const {dataJson} = extensionApi.storage.get({table, id})
+    if (!dataJson) return fallback
+    return JSON.parse(dataJson)
+  },
+
+  getPublic(table, id, fallback = null) {
+    const {dataJson} = extensionApi.storage.getPublic({table, id})
     if (!dataJson) return fallback
     return JSON.parse(dataJson)
   },
@@ -240,9 +251,8 @@ export function getPublicTipJar(requestJson) {
   return runJson(() => {
     const request = parseJsonObject(requestJson)
     const jarId = requiredText(request.jarId, 'jarId', 128)
-    const jar = getJar(jarId)
-    const tips = listPublicTips(jarId)
-    return {jar: publicJar(jar), tips}
+    const jar = getPublicJar(jarId)
+    return {jar: publicJar(jar), tips: []}
   })
 }
 
@@ -348,17 +358,10 @@ function getJar(jarId) {
   return jar
 }
 
-function listPublicTips(jarId) {
-  return storage
-    .getPaginated(TIPS_TABLE, {
-      filters: {jar_id: jarId, paid: true},
-      limit: 100,
-      offset: 0
-    })
-    .data.sort(
-      (a, b) => (b.paid_at || b.created_at || 0) - (a.paid_at || a.created_at || 0)
-    )
-    .map(publicTip)
+function getPublicJar(jarId) {
+  const jar = storage.getPublic(JARS_TABLE, jarId)
+  if (!jar) throw new Error('Tip jar not found.')
+  return jar
 }
 
 function findTipForPayment(tipId, paymentHash) {

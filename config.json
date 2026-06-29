@@ -124,6 +124,29 @@
       "description": "Read data in the tips extension storage namespace."
     },
     {
+      "id": "ext.storage.read_public",
+      "label": "Read public tip jar data",
+      "description": "Read public tip jar fields for public pages.",
+      "policy": {
+        "tables": [
+          {
+            "table_name": "tip_jars",
+            "public_fields": [
+              "id",
+              "title",
+              "description",
+              "wallet_name",
+              "slug",
+              "suggested_amounts",
+              "thank_you_message",
+              "created_at",
+              "updated_at"
+            ]
+          }
+        ]
+      }
+    },
+    {
       "id": "ext.storage.write",
       "label": "Store tip jar data",
       "description": "Write data in the tips extension storage namespace."

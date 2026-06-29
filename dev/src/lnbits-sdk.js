@@ -6,6 +6,7 @@ import {
   randomId,
   storageDelete,
   storageGet,
+  storageGetPublic,
   storageGetPaginated,
   storageSet
 } from 'lnbits:extension/host'
@@ -14,6 +15,10 @@ export const extensionApi = {
   storage: {
     get(input) {
       return storageGet(input)
+    },
+
+    getPublic(input) {
+      return storageGetPublic(input)
     },
 
     set(input) {
@@ -76,6 +81,12 @@ export const extensionApi = {
 export const storage = {
   get(table, id, fallback = null) {
     const {dataJson} = extensionApi.storage.get({table, id})
+    if (!dataJson) return fallback
+    return JSON.parse(dataJson)
+  },
+
+  getPublic(table, id, fallback = null) {
+    const {dataJson} = extensionApi.storage.getPublic({table, id})
     if (!dataJson) return fallback
     return JSON.parse(dataJson)
   },

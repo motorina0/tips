@@ -91,6 +91,7 @@ interface host {
   }
 
   storage-get: func(request: storage-get-request) -> storage-get-response;
+  storage-get-public: func(request: storage-get-request) -> storage-get-response;
   storage-set: func(request: storage-set-request) -> storage-set-response;
   storage-get-paginated: func(request: storage-paginated-request) -> storage-paginated-response;
   storage-delete: func(request: storage-delete-request) -> storage-delete-response;
