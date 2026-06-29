@@ -152,21 +152,30 @@ export function createTipInvoice(requestJson) {
 export function recordPayment(eventJson) {
   return runJson(() => {
     const event = parseJsonObject(eventJson)
-    const paymentHash = requiredText(event.paymentHash, 'paymentHash', 128)
-    const tips = storage.getPaginated(TIPS_TABLE, {
-      filters: {payment_hash: paymentHash},
-      limit: 1,
-      offset: 0
-    }).data
-    const timestamp = system.now()
+    const paymentHash = eventPaymentHash(event)
+    const tipId = eventTipId(event)
 
-    for (const tip of tips) {
-      const paidTip = {...tip, paid: true, paid_at: timestamp}
-      storage.set(TIPS_TABLE, paidTip)
-      return {ok: true, tipId: paidTip.id}
+    if (!tipId && !paymentHash) {
+      throw new Error('paymentHash is required.')
     }
 
-    return {ok: false, error: 'payment not found'}
+    const tip = findTipForPayment(tipId, paymentHash)
+    if (!tip) {
+      return {ok: false, error: 'payment not found'}
+    }
+
+    if (paymentHash && tip.payment_hash && tip.payment_hash !== paymentHash) {
+      return {ok: false, error: 'payment does not match tip'}
+    }
+
+    if (tip.paid) {
+      return {ok: true, tipId: tip.id, paid: true, alreadyPaid: true}
+    }
+
+    const paidTip = {...tip, paid: true, paid_at: system.now()}
+    storage.set(TIPS_TABLE, paidTip)
+    system.log(`tips: marked tip ${paidTip.id} as paid`)
+    return {ok: true, tipId: paidTip.id, paid: true}
   })
 }
 
@@ -206,6 +215,42 @@ function listPublicTips(jarId) {
       (a, b) => (b.paid_at || b.created_at || 0) - (a.paid_at || a.created_at || 0)
     )
     .map(publicTip)
+}
+
+function findTipForPayment(tipId, paymentHash) {
+  if (tipId) {
+    const tip = storage.get(TIPS_TABLE, tipId)
+    if (tip) return tip
+  }
+
+  if (!paymentHash) return null
+  return (
+    storage.getPaginated(TIPS_TABLE, {
+      filters: {payment_hash: paymentHash},
+      limit: 1,
+      offset: 0
+    }).data[0] || null
+  )
+}
+
+function eventPaymentHash(event) {
+  return (
+    cleanText(event.paymentHash, 128) ||
+    cleanText(event.payment_hash, 128) ||
+    cleanText(event.payment?.paymentHash, 128) ||
+    cleanText(event.payment?.payment_hash, 128)
+  )
+}
+
+function eventTipId(event) {
+  return (
+    cleanText(event.tipId, 128) ||
+    cleanText(event.tip_id, 128) ||
+    cleanText(event.extra?.tipId, 128) ||
+    cleanText(event.extra?.tip_id, 128) ||
+    cleanText(event.payment?.extra?.tipId, 128) ||
+    cleanText(event.payment?.extra?.tip_id, 128)
+  )
 }
 
 function publicJar(jar) {
