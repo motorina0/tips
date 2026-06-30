@@ -61,7 +61,7 @@ const extensionApi = {
 
     createInvoicePublic(input) {
       return createInvoicePublic({
-        id: input.id,
+        sourceId: input.sourceId,
         amount: Number(input.amount),
         currency: input.currency || 'sat',
         memo: input.memo || ''
@@ -149,9 +149,9 @@ const wallet = {
     })
   },
 
-  createInvoicePublic({id, amount, currency = 'sat', memo = ''}) {
+  createInvoicePublic({sourceId, amount, currency = 'sat', memo = ''}) {
     return extensionApi.wallet.createInvoicePublic({
-      id,
+      sourceId,
       amount,
       currency,
       memo
@@ -284,10 +284,10 @@ export function createTipInvoice(requestJson) {
     const memo = message ? `${jar.title}: ${message}` : jar.title
 
     const invoice = wallet.createInvoicePublic({
-      id: jarId,
+      sourceId: jarId,
       amount,
       currency: 'sat',
-      memo,
+      memo
     })
 
     return {
@@ -303,27 +303,39 @@ export function recordPayment(eventJson) {
     const event = parseJsonObject(eventJson)
     const paymentHash = eventPaymentHash(event)
     const tipId = eventTipId(event)
+    const sourceId = eventSourceId(event)
 
-    if (!tipId && !paymentHash) {
+    if (!paymentHash) {
       throw new Error('paymentHash is required.')
     }
 
-    const tip = findTipForPayment(tipId, paymentHash)
-    if (!tip) {
-      return {ok: false, error: 'payment not found'}
+    if (tipId) {
+      const tip = storage.get(TIPS_TABLE, tipId)
+      if (!tip) {
+        return {ok: false, error: 'payment not found'}
+      }
+
+      if (tip.payment_hash && tip.payment_hash !== paymentHash) {
+        return {ok: false, error: 'payment does not match tip'}
+      }
+
+      if (tip.paid) {
+        return {ok: true, tipId: tip.id, paid: true, alreadyPaid: true}
+      }
+
+      const paidTip = {...tip, paid: true, paid_at: system.now()}
+      storage.set(TIPS_TABLE, paidTip)
+      system.log(`tips: marked tip ${paidTip.id} as paid`)
+      return {ok: true, tipId: paidTip.id, paid: true}
     }
 
-    if (paymentHash && tip.payment_hash && tip.payment_hash !== paymentHash) {
-      return {ok: false, error: 'payment does not match tip'}
+    if (!sourceId) {
+      return {ok: false, error: 'payment source not found'}
     }
 
-    if (tip.paid) {
-      return {ok: true, tipId: tip.id, paid: true, alreadyPaid: true}
-    }
-
-    const paidTip = {...tip, paid: true, paid_at: system.now()}
+    const paidTip = paidTipFromEvent(event, sourceId, paymentHash)
     storage.set(TIPS_TABLE, paidTip)
-    system.log(`tips: marked tip ${paidTip.id} as paid`)
+    system.log(`tips: recorded paid public tip ${paidTip.id}`)
     return {ok: true, tipId: paidTip.id, paid: true}
   })
 }
@@ -359,28 +371,23 @@ function getPublicJar(jarId) {
   return jar
 }
 
-function findTipForPayment(tipId, paymentHash) {
-  if (tipId) {
-    const tip = storage.get(TIPS_TABLE, tipId)
-    if (tip) return tip
-  }
-
-  if (!paymentHash) return null
-  return (
-    storage.getPaginated(TIPS_TABLE, {
-      filters: {payment_hash: paymentHash},
-      limit: 1,
-      offset: 0
-    }).data[0] || null
-  )
-}
-
 function eventPaymentHash(event) {
   return (
     cleanText(event.paymentHash, 128) ||
     cleanText(event.payment_hash, 128) ||
     cleanText(event.payment?.paymentHash, 128) ||
     cleanText(event.payment?.payment_hash, 128)
+  )
+}
+
+function eventSourceId(event) {
+  return (
+    cleanText(event.sourceId, 128) ||
+    cleanText(event.source_id, 128) ||
+    cleanText(event.extra?.sourceId, 128) ||
+    cleanText(event.extra?.source_id, 128) ||
+    cleanText(event.payment?.extra?.sourceId, 128) ||
+    cleanText(event.payment?.extra?.source_id, 128)
   )
 }
 
@@ -393,6 +400,26 @@ function eventTipId(event) {
     cleanText(event.payment?.extra?.tipId, 128) ||
     cleanText(event.payment?.extra?.tip_id, 128)
   )
+}
+
+function paidTipFromEvent(event, jarId, paymentHash) {
+  const timestamp = system.now()
+  return {
+    id: system.id('tip'),
+    jar_id: jarId,
+    amount_sat: eventAmountSat(event),
+    name: 'Anonymous',
+    message: '',
+    payment_hash: paymentHash,
+    paid: true,
+    created_at: timestamp,
+    paid_at: timestamp
+  }
+}
+
+function eventAmountSat(event) {
+  const amount = Number(event.amount || event.payment?.amount || 0)
+  return Number.isFinite(amount) ? Math.abs(Math.trunc(amount / 1000)) : 0
 }
 
 function publicJar(jar) {

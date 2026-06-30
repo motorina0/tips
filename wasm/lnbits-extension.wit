@@ -54,7 +54,7 @@ interface host {
   }
 
   record invoice-public-request {
-    id: string,
+    source-id: string,
     amount: f64,
     currency: string,
     memo: string
