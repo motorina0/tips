@@ -53,6 +53,13 @@ interface host {
     extra: list<tuple<string, string>>
   }
 
+  record invoice-public-request {
+    id: string,
+    amount: f64,
+    currency: string,
+    memo: string
+  }
+
   record invoice-response {
     payment-hash: string,
     payment-request: string,
@@ -96,6 +103,7 @@ interface host {
   storage-get-paginated: func(request: storage-paginated-request) -> storage-paginated-response;
   storage-delete: func(request: storage-delete-request) -> storage-delete-response;
   create-invoice: func(request: invoice-request) -> invoice-response;
+  create-invoice-public: func(request: invoice-public-request) -> invoice-response;
   list-user-wallets: func() -> list-user-wallets-response;
   random-id: func(request: random-id-request) -> random-id-response;
   now: func() -> now-response;

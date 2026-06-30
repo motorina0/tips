@@ -149,12 +149,21 @@
     },
     {
       "id": "wallet.create_invoice",
-      "label": "Create tip invoices",
-      "description": "Create incoming Lightning invoices for selected wallets.",
+      "label": "Create authenticated tip invoices",
+      "description": "Create incoming Lightning invoices from authenticated extension pages.",
       "policy": {
         "out": false,
         "max_amount_sat": 10000000,
         "required_extra_tag": "tips"
+      }
+    },
+    {
+      "id": "wallet.create_invoice_public",
+      "label": "Create tip invoices",
+      "description": "Create incoming Lightning invoices for selected wallets.",
+      "policy": {
+        "table": "tip_jars",
+        "wallet_field": "wallet_id"
       }
     },
     {

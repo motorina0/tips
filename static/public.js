@@ -26,7 +26,8 @@ createInvoiceButton.addEventListener('click', async event => {
   try {
     const payload = {
       jarId: state.jarId,
-      amountSat: Number(fieldValue(tipForm, 'amountSat')),
+      amount: Number(fieldValue(tipForm, 'amount')),
+      currency: 'sat',
       name: fieldValue(tipForm, 'name'),
       message: fieldValue(tipForm, 'message')
     }
@@ -87,7 +88,7 @@ async function renderPublicPage() {
     chip.className = 'amount-chip'
     chip.textContent = `${amount} sats`
     chip.addEventListener('click', () => {
-      tipForm.elements.amountSat.value = amount
+      tipForm.elements.amount.value = amount
     })
     amounts.append(chip)
   }

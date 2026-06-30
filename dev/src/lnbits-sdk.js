@@ -1,5 +1,6 @@
 import {
   createInvoice,
+  createInvoicePublic,
   listUserWallets,
   log,
   now,
@@ -55,6 +56,15 @@ export const extensionApi = {
           key,
           String(value)
         ])
+      })
+    },
+
+    createInvoicePublic(input) {
+      return createInvoicePublic({
+        id: input.id,
+        amount: Number(input.amount),
+        currency: input.currency || 'sat',
+        memo: input.memo || ''
       })
     },
 
@@ -136,6 +146,15 @@ export const wallet = {
       memo,
       tag,
       extra: invoiceExtra
+    })
+  },
+
+  createInvoicePublic({id, amount, currency = 'sat', memo = ''}) {
+    return extensionApi.wallet.createInvoicePublic({
+      id,
+      amount,
+      currency,
+      memo
     })
   }
 }

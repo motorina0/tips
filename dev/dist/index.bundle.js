@@ -1,5 +1,6 @@
 import {
   createInvoice,
+  createInvoicePublic,
   listUserWallets,
   log,
   now,
@@ -55,6 +56,15 @@ const extensionApi = {
           key,
           String(value)
         ])
+      })
+    },
+
+    createInvoicePublic(input) {
+      return createInvoicePublic({
+        id: input.id,
+        amount: Number(input.amount),
+        currency: input.currency || 'sat',
+        memo: input.memo || ''
       })
     },
 
@@ -137,6 +147,15 @@ const wallet = {
       tag,
       extra: invoiceExtra
     })
+  },
+
+  createInvoicePublic({id, amount, currency = 'sat', memo = ''}) {
+    return extensionApi.wallet.createInvoicePublic({
+      id,
+      amount,
+      currency,
+      memo
+    })
   }
 }
 
@@ -155,7 +174,6 @@ const system = {
 }
 
 
-const TAG = 'tips'
 const JARS_TABLE = 'tip_jars'
 const TIPS_TABLE = 'tips'
 const JAR_SEARCH_FIELDS = ['title', 'description', 'wallet_name', 'thank_you_message']
@@ -260,42 +278,19 @@ export function createTipInvoice(requestJson) {
   return runJson(() => {
     const request = parseJsonObject(requestJson)
     const jarId = requiredText(request.jarId, 'jarId', 128)
-    const jar = getJar(jarId)
-    const walletId = requiredText(jar.wallet_id, 'walletId', 128)
-    const amountSat = normalizeAmount(request.amountSat)
-    const name = cleanText(request.name, 60) || 'Anonymous'
+    const jar = getPublicJar(jarId)
+    const amount = normalizeAmount(request.amount ?? request.amountSat)
     const message = cleanText(request.message, 280)
-    const tipId = system.id('tip')
     const memo = message ? `${jar.title}: ${message}` : jar.title
 
-    const invoice = wallet.createInvoice({
-      walletId,
-      amountSat,
+    const invoice = wallet.createInvoicePublic({
+      id: jarId,
+      amount,
+      currency: 'sat',
       memo,
-      tag: TAG,
-      extra: {
-        tip_id: tipId,
-        jar_id: jarId
-      }
     })
 
-    const timestamp = system.now()
-    const tip = {
-      id: tipId,
-      jar_id: jarId,
-      amount_sat: amountSat,
-      name,
-      message,
-      payment_hash: invoice.paymentHash,
-      paid: false,
-      created_at: timestamp,
-      paid_at: null
-    }
-
-    storage.set(TIPS_TABLE, tip)
-
     return {
-      tipId,
       paymentHash: invoice.paymentHash,
       paymentRequest: invoice.paymentRequest,
       checkingId: invoice.checkingId
@@ -446,10 +441,10 @@ function normalizeAmounts(value) {
 function normalizeAmount(value) {
   const amount = Number(value)
   if (!Number.isInteger(amount) || amount <= 0) {
-    throw new Error('amountSat must be a positive integer.')
+    throw new Error('amount must be a positive integer.')
   }
   if (amount > 10000000) {
-    throw new Error('amountSat exceeds the extension limit.')
+    throw new Error('amount exceeds the extension limit.')
   }
   return amount
 }
