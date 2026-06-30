@@ -64,7 +64,11 @@ export const extensionApi = {
         sourceId: input.sourceId,
         amount: Number(input.amount),
         currency: input.currency || 'sat',
-        memo: input.memo || ''
+        memo: input.memo || '',
+        extra: Object.entries(input.extra || {}).map(([key, value]) => [
+          key,
+          String(value)
+        ])
       })
     },
 
@@ -149,12 +153,13 @@ export const wallet = {
     })
   },
 
-  createInvoicePublic({sourceId, amount, currency = 'sat', memo = ''}) {
+  createInvoicePublic({sourceId, amount, currency = 'sat', memo = '', extra = {}}) {
     return extensionApi.wallet.createInvoicePublic({
       sourceId,
       amount,
       currency,
-      memo
+      memo,
+      extra
     })
   }
 }

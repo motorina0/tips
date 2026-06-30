@@ -57,7 +57,8 @@ interface host {
     source-id: string,
     amount: f64,
     currency: string,
-    memo: string
+    memo: string,
+    extra: list<tuple<string, string>>
   }
 
   record invoice-response {

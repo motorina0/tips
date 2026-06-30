@@ -106,6 +106,7 @@ export function createTipInvoice(requestJson) {
     const jarId = requiredText(request.jarId, 'jarId', 128)
     const jar = getPublicJar(jarId)
     const amount = normalizeAmount(request.amount ?? request.amountSat)
+    const name = cleanText(request.name, 60) || 'Anonymous'
     const message = cleanText(request.message, 280)
     const memo = message ? `${jar.title}: ${message}` : jar.title
 
@@ -113,7 +114,8 @@ export function createTipInvoice(requestJson) {
       sourceId: jarId,
       amount,
       currency: 'sat',
-      memo
+      memo,
+      extra: {name, message}
     })
 
     return {
@@ -230,17 +232,26 @@ function eventTipId(event) {
 
 function paidTipFromEvent(event, jarId, paymentHash) {
   const timestamp = system.now()
+  const tipExtra = eventExtensionExtra(event)
   return {
     id: system.id('tip'),
     jar_id: jarId,
     amount_sat: eventAmountSat(event),
-    name: 'Anonymous',
-    message: '',
+    name: cleanText(tipExtra.name, 60) || 'Anonymous',
+    message: cleanText(tipExtra.message, 280),
     payment_hash: paymentHash,
     paid: true,
     created_at: timestamp,
     paid_at: timestamp
   }
+}
+
+function eventExtensionExtra(event) {
+  return (
+    objectValue(event.extra?.extra_tips) ||
+    objectValue(event.payment?.extra?.extra_tips) ||
+    {}
+  )
 }
 
 function eventAmountSat(event) {
@@ -346,6 +357,11 @@ function cleanSlug(value) {
 function cleanText(value, maxLength) {
   if (typeof value !== 'string') return ''
   return value.trim().replace(/\s+/g, ' ').slice(0, maxLength)
+}
+
+function objectValue(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  return value
 }
 
 function requiredText(value, field, maxLength) {
