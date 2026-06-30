@@ -15,7 +15,6 @@ const runtimeStatus = document.querySelector('#runtime-status')
 const invoiceDialog = document.querySelector('#invoice-dialog')
 const invoiceQrCode = document.querySelector('#invoice-qrcode')
 const invoiceStatus = document.querySelector('#invoice-status')
-const invoiceLink = document.querySelector('#invoice-link')
 const copyInvoiceButton = document.querySelector('#copy-invoice-button')
 const confettiLayer = document.querySelector('#confetti-layer')
 runtimeStatus.textContent = 'sandbox bridge'
@@ -117,7 +116,6 @@ function openInvoiceDialog(invoice) {
   const qrValue = `lightning:${paymentRequest.toUpperCase()}`
   invoiceStatus.textContent = 'Waiting for payment'
   invoiceStatus.classList.remove('text-positive')
-  invoiceLink.href = `lightning:${paymentRequest}`
   copyInvoiceButton.dataset.invoice = paymentRequest
   renderQrCode(qrValue)
   invoiceDialog.hidden = false
