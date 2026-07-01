@@ -9,6 +9,7 @@ const client = window.createLNbitsExtensionClient({
 })
 
 const tipForm = document.querySelector('#tip-form')
+const tipFormColumn = document.querySelector('#tip-form-column')
 const createInvoiceButton = document.querySelector('#create-invoice-button')
 const publicPage = document.querySelector('#public-page')
 const runtimeStatus = document.querySelector('#runtime-status')
@@ -62,13 +63,16 @@ async function init() {
 async function renderPublicPage() {
   if (!state.jarId) {
     publicPage.innerHTML = '<p class="muted">No tip jar selected.</p>'
-    tipForm.hidden = true
+    setInvoiceFormVisible(false)
     return
   }
 
   const response = await client.getPublicJar(state.jarId)
   const jar = response.jar
   const tips = response.tips || []
+  const isOnchain = jar.paymentMethod === 'onchain'
+
+  setInvoiceFormVisible(!isOnchain)
 
   publicPage.innerHTML = ''
   const title = document.createElement('h2')
@@ -77,22 +81,28 @@ async function renderPublicPage() {
 
   const description = document.createElement('p')
   description.className = 'muted'
-  description.textContent = jar.description || 'Send a Lightning tip.'
+  description.textContent = jar.description || 'Send a tip.'
 
-  const amounts = document.createElement('div')
-  amounts.className = 'amount-row'
+  publicPage.append(title, description)
 
-  for (const amount of jar.suggestedAmounts || []) {
-    const chip = document.createElement('span')
-    chip.className = 'amount-chip'
-    chip.textContent = `${amount} sats`
-    chip.addEventListener('click', () => {
-      tipForm.elements.amount.value = amount
-    })
-    amounts.append(chip)
+  if (isOnchain) {
+    publicPage.append(onchainAddressPanel(jar.onchainAddress))
+  } else {
+    const amounts = document.createElement('div')
+    amounts.className = 'amount-row'
+
+    for (const amount of jar.suggestedAmounts || []) {
+      const chip = document.createElement('span')
+      chip.className = 'amount-chip'
+      chip.textContent = `${amount} sats`
+      chip.addEventListener('click', () => {
+        tipForm.elements.amount.value = amount
+      })
+      amounts.append(chip)
+    }
+
+    publicPage.append(amounts)
   }
-
-  publicPage.append(title, description, amounts)
 
   if (tips.length) {
     const recent = document.createElement('p')
@@ -100,6 +110,50 @@ async function renderPublicPage() {
     recent.textContent = `${tips.length} paid tip${tips.length === 1 ? '' : 's'}`
     publicPage.append(recent)
   }
+}
+
+function onchainAddressPanel(address) {
+  const container = document.createElement('div')
+  container.className = 'onchain-panel'
+
+  if (!address) {
+    const unavailable = document.createElement('p')
+    unavailable.className = 'muted q-my-none'
+    unavailable.textContent = 'No onchain address is available.'
+    container.append(unavailable)
+    return container
+  }
+
+  const qr = document.createElement('div')
+  qr.className = 'onchain-qrcode'
+  renderAddressQrCode(qr, address)
+
+  const label = document.createElement('p')
+  label.className = 'text-caption text-grey-5 q-mb-xs'
+  label.textContent = 'Onchain address'
+
+  const addressText = document.createElement('code')
+  addressText.className = 'onchain-address'
+  addressText.textContent = address
+
+  const copyButton = document.createElement('button')
+  copyButton.className = 'q-btn bg-primary text-white full-width q-mt-md'
+  copyButton.type = 'button'
+  copyButton.textContent = 'Copy Address'
+  copyButton.addEventListener('click', () => {
+    navigator.clipboard?.writeText(address).catch(() => {})
+  })
+
+  container.append(qr, label, addressText, copyButton)
+  return container
+}
+
+function setInvoiceFormVisible(visible) {
+  if (tipFormColumn) {
+    tipFormColumn.hidden = !visible
+    return
+  }
+  tipForm.hidden = !visible
 }
 
 function setInvoiceLoading(loading) {
@@ -154,6 +208,27 @@ function renderQrCode(value) {
     }
   })
   state.qrApp.mount(invoiceQrCode)
+}
+
+function renderAddressQrCode(container, address) {
+  if (!window.Vue || !window.QrcodeVue?.default) {
+    container.textContent = address
+    return
+  }
+
+  const qrApp = window.Vue.createApp({
+    render() {
+      return window.Vue.h(window.QrcodeVue.default, {
+        value: address,
+        size: 240,
+        margin: 3,
+        level: 'Q',
+        renderAs: 'svg',
+        class: 'invoice-qrcode-svg'
+      })
+    }
+  })
+  qrApp.mount(container)
 }
 
 async function subscribeToPayment(paymentHash) {

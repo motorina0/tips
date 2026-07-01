@@ -29,6 +29,10 @@
         "visibility": "authenticated"
       },
       {
+        "name": "list-tip-watchonly-wallets",
+        "visibility": "authenticated"
+      },
+      {
         "name": "get-bitcoin-rate",
         "visibility": "authenticated"
       },
@@ -107,6 +111,12 @@
     },
     {
       "method": "GET",
+      "path": "/watchonly/wallets",
+      "export": "list-tip-watchonly-wallets",
+      "auth": "user"
+    },
+    {
+      "method": "GET",
       "path": "/rate/bitcoin",
       "export": "get-bitcoin-rate",
       "auth": "user"
@@ -145,8 +155,10 @@
               "id",
               "title",
               "description",
+              "payment_method",
               "suggested_amounts",
-              "thank_you_message"
+              "thank_you_message",
+              "onchain_address"
             ]
           }
         ]
@@ -187,6 +199,20 @@
       "policy": {
         "hosts": [
           "https://api.coingecko.com"
+        ]
+      }
+    },
+    {
+      "id": "extension.api.request",
+      "description": "Read Watchonly accounts and create receive addresses for onchain tip jars.",
+      "policy": {
+        "extensions": [
+          {
+            "id": "watchonly",
+            "access": [
+              "read"
+            ]
+          }
         ]
       }
     }

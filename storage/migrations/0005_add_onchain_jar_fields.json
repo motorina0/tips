@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "description": "Store onchain payment details on tip jars.",
+  "operations": [
+    {
+      "op": "add_field",
+      "table": "tip_jars",
+      "field": "payment_method",
+      "type": "string",
+      "default": "lightning"
+    },
+    {
+      "op": "add_field",
+      "table": "tip_jars",
+      "field": "watchonly_wallet_id",
+      "type": "string",
+      "default": ""
+    },
+    {
+      "op": "add_field",
+      "table": "tip_jars",
+      "field": "watchonly_wallet_name",
+      "type": "string",
+      "default": ""
+    },
+    {
+      "op": "add_field",
+      "table": "tip_jars",
+      "field": "onchain_address",
+      "type": "string",
+      "default": ""
+    }
+  ]
+}

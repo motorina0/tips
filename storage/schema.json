@@ -16,11 +16,27 @@
           "type": "string"
         },
         {
+          "name": "payment_method",
+          "type": "string"
+        },
+        {
           "name": "wallet_id",
           "type": "string"
         },
         {
           "name": "wallet_name",
+          "type": "string"
+        },
+        {
+          "name": "watchonly_wallet_id",
+          "type": "string"
+        },
+        {
+          "name": "watchonly_wallet_name",
+          "type": "string"
+        },
+        {
+          "name": "onchain_address",
           "type": "string"
         },
         {

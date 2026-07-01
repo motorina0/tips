@@ -1,11 +1,18 @@
-import {http, storage, system, wallet} from './lnbits-sdk.js'
+import {extension, http, storage, system, wallet} from './lnbits-sdk.js'
 
 const JARS_TABLE = 'tip_jars'
 const TIPS_TABLE = 'tips'
-const JAR_SEARCH_FIELDS = ['title', 'description', 'wallet_name', 'thank_you_message']
+const JAR_SEARCH_FIELDS = [
+  'title',
+  'description',
+  'wallet_name',
+  'watchonly_wallet_name',
+  'thank_you_message'
+]
 const TIP_SEARCH_FIELDS = ['name', 'message', 'payment_hash']
 const BITCOIN_USD_RATE_URL =
   'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd'
+const WATCHONLY_EXTENSION_ID = 'watchonly'
 
 export function createTipJar(requestJson) {
   return runJson(() => {
@@ -13,8 +20,25 @@ export function createTipJar(requestJson) {
     const id = cleanId(request.id) || system.id('tipjar')
     const title = cleanText(request.title, 80) || 'Tip jar'
     const description = cleanText(request.description, 280)
-    const walletId = requiredText(request.walletId, 'walletId', 128)
-    const walletName = cleanText(request.walletName, 120) || walletId
+    const paymentMethod = normalizePaymentMethod(request.paymentMethod)
+    const walletId =
+      paymentMethod === 'lightning'
+        ? requiredText(request.walletId, 'walletId', 128)
+        : ''
+    const walletName =
+      paymentMethod === 'lightning'
+        ? cleanText(request.walletName, 120) || walletId
+        : ''
+    const watchonlyWalletId =
+      paymentMethod === 'onchain'
+        ? requiredText(request.watchonlyWalletId, 'watchonlyWalletId', 128)
+        : ''
+    const watchonlyWalletName =
+      paymentMethod === 'onchain'
+        ? cleanText(request.watchonlyWalletName, 120) || watchonlyWalletId
+        : ''
+    const onchainAddress =
+      paymentMethod === 'onchain' ? freshWatchonlyAddress(watchonlyWalletId) : ''
     const thankYouMessage =
       cleanText(request.thankYouMessage, 160) || 'Thanks for the tip.'
     const suggestedAmounts = normalizeAmounts(request.suggestedAmounts)
@@ -24,8 +48,12 @@ export function createTipJar(requestJson) {
       id,
       title,
       description,
+      payment_method: paymentMethod,
       wallet_id: walletId,
       wallet_name: walletName,
+      watchonly_wallet_id: watchonlyWalletId,
+      watchonly_wallet_name: watchonlyWalletName,
+      onchain_address: onchainAddress,
       slug: cleanSlug(request.slug) || id,
       suggested_amounts: suggestedAmounts,
       thank_you_message: thankYouMessage,
@@ -93,6 +121,12 @@ export function listTipWallets(_requestJson) {
   })
 }
 
+export function listTipWatchonlyWallets(_requestJson) {
+  return runJson(() => {
+    return {wallets: listWatchonlyWallets()}
+  })
+}
+
 export function getBitcoinRate(_requestJson) {
   return runJson(() => bitcoinUsdRate())
 }
@@ -111,6 +145,9 @@ export function createTipInvoice(requestJson) {
     const request = parseJsonObject(requestJson)
     const jarId = requiredText(request.jarId, 'jarId', 128)
     const jar = getPublicJar(jarId)
+    if (jar.paymentMethod === 'onchain') {
+      throw new Error('Onchain tip jars do not create Lightning invoices.')
+    }
     const amount = normalizeAmount(request.amount ?? request.amountSat)
     const name = cleanText(request.name, 60) || 'Anonymous'
     const message = cleanText(request.message, 280)
@@ -295,6 +332,44 @@ function bitcoinUsdRate() {
   }
 }
 
+function listWatchonlyWallets() {
+  const response = extension.request({
+    extensionId: WATCHONLY_EXTENSION_ID,
+    method: 'GET',
+    path: '/api/v1/wallet?network=Mainnet'
+  })
+
+  if (response.statusCode !== 200) {
+    throw new Error(`Watchonly returned HTTP ${response.statusCode}.`)
+  }
+
+  const wallets = JSON.parse(response.body || '[]')
+  if (!Array.isArray(wallets)) {
+    throw new Error('Watchonly returned an invalid wallet list.')
+  }
+  return wallets.map(wallet => ({
+    id: cleanText(wallet.id, 128),
+    title: cleanText(wallet.title, 120) || cleanText(wallet.id, 128),
+    balance: Number(wallet.balance || 0),
+    network: cleanText(wallet.network, 32) || 'Mainnet'
+  }))
+}
+
+function freshWatchonlyAddress(walletId) {
+  const response = extension.request({
+    extensionId: WATCHONLY_EXTENSION_ID,
+    method: 'GET',
+    path: `/api/v1/address/${encodeURIComponent(walletId)}`
+  })
+
+  if (response.statusCode !== 200) {
+    throw new Error(`Watchonly returned HTTP ${response.statusCode}.`)
+  }
+
+  const address = parseJsonObject(response.body)
+  return requiredText(address.address, 'onchain address', 256)
+}
+
 function satsToUsd(amountSat, btcUsd) {
   return Number(((Number(amountSat) / 100000000) * btcUsd).toFixed(2))
 }
@@ -304,7 +379,12 @@ function publicJar(jar) {
     id: jar.id,
     title: jar.title,
     description: jar.description,
-    walletName: jar.wallet_name,
+    paymentMethod: jar.payment_method || 'lightning',
+    walletName:
+      jar.payment_method === 'onchain'
+        ? jar.watchonly_wallet_name
+        : jar.wallet_name,
+    onchainAddress: jar.onchain_address || '',
     slug: jar.slug,
     suggestedAmounts: jar.suggested_amounts,
     thankYouMessage: jar.thank_you_message,
@@ -377,6 +457,10 @@ function normalizeTipSortBy(value) {
       paymentHash: 'payment_hash'
     }[value] || 'created_at'
   )
+}
+
+function normalizePaymentMethod(value) {
+  return value === 'onchain' ? 'onchain' : 'lightning'
 }
 
 function cleanId(value) {

@@ -9,7 +9,9 @@ const app = Vue.createApp({
       form: {
         title: 'Support the project',
         description: 'Leave a tip and a short message.',
+        paymentMethod: 'lightning',
         walletId: null,
+        watchonlyWalletId: null,
         suggestedAmounts: '100,500,1000',
         thankYouMessage: 'Thanks for the tip.'
       },
@@ -138,7 +140,17 @@ const app = Vue.createApp({
         },
         search: ''
       },
-      wallets: []
+      wallets: [],
+      watchonlyWallets: [],
+      watchonlyWalletsLoading: false
+    }
+  },
+
+  watch: {
+    'form.paymentMethod'(value) {
+      if (value === 'onchain') {
+        this.fetchWatchonlyWallets()
+      }
     }
   },
 
@@ -148,6 +160,20 @@ const app = Vue.createApp({
         label: wallet.name,
         value: wallet.id
       }))
+    },
+
+    watchonlyWalletOptions() {
+      return this.watchonlyWallets.map(wallet => ({
+        label: wallet.title,
+        value: wallet.id
+      }))
+    },
+
+    canCreateJar() {
+      if (this.form.paymentMethod === 'onchain') {
+        return !!this.form.watchonlyWalletId && !this.watchonlyWalletsLoading
+      }
+      return !!this.form.walletId
     }
   },
 
@@ -183,6 +209,23 @@ const app = Vue.createApp({
         }
       } catch (error) {
         this.showError(error)
+      }
+    },
+
+    async fetchWatchonlyWallets() {
+      if (this.watchonlyWalletsLoading || this.watchonlyWallets.length) return
+
+      this.watchonlyWalletsLoading = true
+      try {
+        const response = await client.listWatchonlyWallets()
+        this.watchonlyWallets = response.wallets || []
+        if (!this.form.watchonlyWalletId && this.watchonlyWallets.length) {
+          this.form.watchonlyWalletId = this.watchonlyWallets[0].id
+        }
+      } catch (error) {
+        this.showError(error)
+      } finally {
+        this.watchonlyWalletsLoading = false
       }
     },
 
@@ -226,11 +269,18 @@ const app = Vue.createApp({
         const wallet = this.wallets.find(
           wallet => wallet.id === this.form.walletId
         )
+        const watchonlyWallet = this.watchonlyWallets.find(
+          wallet => wallet.id === this.form.watchonlyWalletId
+        )
         const jar = await client.createJar({
           title: this.form.title,
           description: this.form.description,
+          paymentMethod: this.form.paymentMethod,
           walletId: this.form.walletId,
           walletName: wallet?.name || this.form.walletId,
+          watchonlyWalletId: this.form.watchonlyWalletId,
+          watchonlyWalletName:
+            watchonlyWallet?.title || this.form.watchonlyWalletId,
           suggestedAmounts: this.form.suggestedAmounts
             .split(',')
             .map(value => Number(value.trim()))
@@ -334,6 +384,7 @@ const app = Vue.createApp({
     const QForm = component('q-form')
     const QIcon = component('q-icon')
     const QInput = component('q-input')
+    const QRadio = component('q-radio')
     const QSelect = component('q-select')
     const QTable = component('q-table')
     const QTd = component('q-td')
@@ -368,7 +419,7 @@ const app = Vue.createApp({
             h(
               'p',
               {class: 'text-subtitle2 text-grey-5 q-my-none'},
-              'Manage public Lightning tip jars.'
+              'Manage public tip jars.'
             )
           ])
         ]),
@@ -492,20 +543,60 @@ const app = Vue.createApp({
                         type: 'textarea',
                         maxlength: 280
                       }),
-                      h(QSelect, {
-                        modelValue: this.form.walletId,
-                        'onUpdate:modelValue': value => {
-                          this.form.walletId = value
-                        },
-                        dark: true,
-                        filled: true,
-                        dense: true,
-                        emitValue: true,
-                        mapOptions: true,
-                        label: 'Wallet',
-                        options: this.walletOptions,
-                        disable: !this.walletOptions.length
-                      }),
+                      h('div', {class: 'row q-gutter-sm'}, [
+                        h(QRadio, {
+                          modelValue: this.form.paymentMethod,
+                          'onUpdate:modelValue': value => {
+                            this.form.paymentMethod = value
+                          },
+                          dark: true,
+                          dense: true,
+                          val: 'lightning',
+                          label: 'Lightning'
+                        }),
+                        h(QRadio, {
+                          modelValue: this.form.paymentMethod,
+                          'onUpdate:modelValue': value => {
+                            this.form.paymentMethod = value
+                          },
+                          dark: true,
+                          dense: true,
+                          val: 'onchain',
+                          label: 'Onchain'
+                        })
+                      ]),
+                      this.form.paymentMethod === 'onchain'
+                        ? h(QSelect, {
+                            modelValue: this.form.watchonlyWalletId,
+                            'onUpdate:modelValue': value => {
+                              this.form.watchonlyWalletId = value
+                            },
+                            dark: true,
+                            filled: true,
+                            dense: true,
+                            emitValue: true,
+                            mapOptions: true,
+                            label: 'Onchain account',
+                            options: this.watchonlyWalletOptions,
+                            loading: this.watchonlyWalletsLoading,
+                            disable:
+                              this.watchonlyWalletsLoading ||
+                              !this.watchonlyWalletOptions.length
+                          })
+                        : h(QSelect, {
+                            modelValue: this.form.walletId,
+                            'onUpdate:modelValue': value => {
+                              this.form.walletId = value
+                            },
+                            dark: true,
+                            filled: true,
+                            dense: true,
+                            emitValue: true,
+                            mapOptions: true,
+                            label: 'Wallet',
+                            options: this.walletOptions,
+                            disable: !this.walletOptions.length
+                          }),
                       formInput('suggestedAmounts', {
                         label: 'Suggested amounts'
                       }),
@@ -520,7 +611,7 @@ const app = Vue.createApp({
                           color: 'primary',
                           class: 'full-width',
                           type: 'button',
-                          disable: !this.walletOptions.length,
+                          disable: !this.canCreateJar,
                           loading: this.creating,
                           onClick: this.createJar
                         },

@@ -51,6 +51,10 @@
         return request(`${baseUrl}/wallets`)
       },
 
+      listWatchonlyWallets() {
+        return request(`${baseUrl}/watchonly/wallets`)
+      },
+
       getBitcoinRate() {
         return request(`${baseUrl}/rate/bitcoin`)
       },

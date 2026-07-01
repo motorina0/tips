@@ -1,6 +1,7 @@
 import {
   createInvoice,
   createInvoicePublic,
+  extensionApiRequest,
   httpRequest,
   listUserWallets,
   log,
@@ -87,6 +88,17 @@ export const extensionApi = {
           key,
           String(value)
         ]),
+        body: input.body ?? undefined
+      })
+    }
+  },
+
+  extension: {
+    request(input) {
+      return extensionApiRequest({
+        extensionId: input.extensionId,
+        method: input.method || 'GET',
+        path: input.path,
         body: input.body ?? undefined
       })
     }
@@ -185,6 +197,22 @@ export const http = {
       method,
       url,
       headers,
+      body
+    })
+    return {
+      statusCode: Number(response.statusCode || 0),
+      headers: Object.fromEntries(response.headers || []),
+      body: response.body || ''
+    }
+  }
+}
+
+export const extension = {
+  request({extensionId, method = 'GET', path, body = undefined}) {
+    const response = extensionApi.extension.request({
+      extensionId,
+      method,
+      path,
       body
     })
     return {

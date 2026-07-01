@@ -90,6 +90,13 @@ interface host {
     body: string
   }
 
+  record extension-api-request-options {
+    extension-id: string,
+    method: string,
+    path: string,
+    body: option<string>
+  }
+
   record random-id-request {
     prefix: string
   }
@@ -120,6 +127,7 @@ interface host {
   create-invoice-public: func(request: invoice-public-request) -> invoice-response;
   list-user-wallets: func() -> list-user-wallets-response;
   http-request: func(request: http-request-options) -> http-response-data;
+  extension-api-request: func(request: extension-api-request-options) -> http-response-data;
   random-id: func(request: random-id-request) -> random-id-response;
   now: func() -> now-response;
   log: func(request: log-request) -> log-response;
@@ -132,6 +140,7 @@ world tips {
   export list-tip-jars: func(request-json: string) -> string;
   export list-tip-jar-tips: func(request-json: string) -> string;
   export list-tip-wallets: func(request-json: string) -> string;
+  export list-tip-watchonly-wallets: func(request-json: string) -> string;
   export get-bitcoin-rate: func(request-json: string) -> string;
   export get-public-tip-jar: func(request-json: string) -> string;
   export create-tip-invoice: func(request-json: string) -> string;
