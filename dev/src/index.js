@@ -1,9 +1,11 @@
-import {storage, system, wallet} from './lnbits-sdk.js'
+import {http, storage, system, wallet} from './lnbits-sdk.js'
 
 const JARS_TABLE = 'tip_jars'
 const TIPS_TABLE = 'tips'
 const JAR_SEARCH_FIELDS = ['title', 'description', 'wallet_name', 'thank_you_message']
 const TIP_SEARCH_FIELDS = ['name', 'message', 'payment_hash']
+const BITCOIN_USD_RATE_URL =
+  'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd'
 
 export function createTipJar(requestJson) {
   return runJson(() => {
@@ -89,6 +91,10 @@ export function listTipWallets(_requestJson) {
   return runJson(() => {
     return {wallets: wallet.listUserWallets()}
   })
+}
+
+export function getBitcoinRate(_requestJson) {
+  return runJson(() => bitcoinUsdRate())
 }
 
 export function getPublicTipJar(requestJson) {
@@ -257,6 +263,40 @@ function eventExtensionExtra(event) {
 function eventAmountSat(event) {
   const amount = Number(event.amount || event.payment?.amount || 0)
   return Number.isFinite(amount) ? Math.abs(Math.trunc(amount / 1000)) : 0
+}
+
+function bitcoinUsdRate() {
+  const response = http.request({
+    method: 'GET',
+    url: BITCOIN_USD_RATE_URL,
+    headers: {
+      accept: 'application/json'
+    }
+  })
+
+  if (response.statusCode !== 200) {
+    throw new Error(`Rate provider returned HTTP ${response.statusCode}.`)
+  }
+
+  const data = parseJsonObject(response.body)
+  const btcUsd = Number(data.bitcoin?.usd)
+  if (!Number.isFinite(btcUsd) || btcUsd <= 0) {
+    throw new Error('Rate provider returned an invalid Bitcoin price.')
+  }
+
+  return {
+    source: 'CoinGecko',
+    currency: 'USD',
+    btcUsd,
+    satsPerUsd: Math.round(100000000 / btcUsd),
+    sampleAmountSat: 1000,
+    sampleAmountUsd: satsToUsd(1000, btcUsd),
+    fetchedAt: system.now()
+  }
+}
+
+function satsToUsd(amountSat, btcUsd) {
+  return Number(((Number(amountSat) / 100000000) * btcUsd).toFixed(2))
 }
 
 function publicJar(jar) {

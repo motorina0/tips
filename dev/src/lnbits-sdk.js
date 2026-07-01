@@ -1,6 +1,7 @@
 import {
   createInvoice,
   createInvoicePublic,
+  httpRequest,
   listUserWallets,
   log,
   now,
@@ -74,6 +75,20 @@ export const extensionApi = {
 
     listUserWallets() {
       return listUserWallets()
+    }
+  },
+
+  http: {
+    request(input) {
+      return httpRequest({
+        method: input.method || 'GET',
+        url: input.url,
+        headers: Object.entries(input.headers || {}).map(([key, value]) => [
+          key,
+          String(value)
+        ]),
+        body: input.body ?? undefined
+      })
     }
   },
 
@@ -161,6 +176,22 @@ export const wallet = {
       memo,
       extra
     })
+  }
+}
+
+export const http = {
+  request({method = 'GET', url, headers = {}, body = undefined}) {
+    const response = extensionApi.http.request({
+      method,
+      url,
+      headers,
+      body
+    })
+    return {
+      statusCode: Number(response.statusCode || 0),
+      headers: Object.fromEntries(response.headers || []),
+      body: response.body || ''
+    }
   }
 }
 

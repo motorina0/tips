@@ -13,6 +13,11 @@ const app = Vue.createApp({
         suggestedAmounts: '100,500,1000',
         thankYouMessage: 'Thanks for the tip.'
       },
+      bitcoinRate: {
+        loading: false,
+        data: null,
+        error: ''
+      },
       jars: [],
       jarsTable: {
         columns: [
@@ -147,10 +152,28 @@ const app = Vue.createApp({
   },
 
   async mounted() {
-    await Promise.all([this.fetchWallets(), this.fetchJars()])
+    await Promise.all([
+      this.fetchWallets(),
+      this.fetchJars(),
+      this.fetchBitcoinRate()
+    ])
   },
 
   methods: {
+    async fetchBitcoinRate() {
+      this.bitcoinRate.loading = true
+      this.bitcoinRate.error = ''
+      try {
+        this.bitcoinRate.data = await client.getBitcoinRate()
+      } catch (error) {
+        this.bitcoinRate.data = null
+        this.bitcoinRate.error =
+          error instanceof Error ? error.message : String(error)
+      } finally {
+        this.bitcoinRate.loading = false
+      }
+    },
+
     async fetchWallets() {
       try {
         const response = await client.listWallets()
@@ -290,6 +313,16 @@ const app = Vue.createApp({
       if (!timestamp) return '-'
       const millis = Number(timestamp) < 1000000000000 ? timestamp * 1000 : timestamp
       return new Date(millis).toLocaleString()
+    },
+
+    formatUsd(value) {
+      const amount = Number(value)
+      if (!Number.isFinite(amount)) return '-'
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        maximumFractionDigits: amount >= 1 ? 2 : 4
+      }).format(amount)
     }
   },
 
@@ -347,6 +380,89 @@ const app = Vue.createApp({
       ]),
 
       h('section', {class: 'row q-col-gutter-md'}, [
+        h('div', {class: 'col-12'}, [
+          h(
+            QCard,
+            {dark: true, class: 'panel q-pa-md full-height'},
+            {
+              default: () => [
+                h('div', {class: 'row items-center justify-between q-mb-sm'}, [
+                  h(
+                    'h2',
+                    {class: 'text-h6 text-weight-bold q-my-none'},
+                    'Bitcoin Rate'
+                  ),
+                  h(
+                    QBtn,
+                    {
+                      flat: true,
+                      dense: true,
+                      icon: 'refresh',
+                      loading: this.bitcoinRate.loading,
+                      onClick: this.fetchBitcoinRate
+                    },
+                    {
+                      default: () => [
+                        h(
+                          QTooltip,
+                          {},
+                          {
+                            default: () => 'Refresh rate'
+                          }
+                        )
+                      ]
+                    }
+                  )
+                ]),
+                this.bitcoinRate.data
+                  ? h('div', {class: 'row q-col-gutter-md'}, [
+                      h('div', {class: 'col-12 col-sm-4'}, [
+                        h(
+                          'div',
+                          {class: 'text-caption text-grey-5'},
+                          'Source'
+                        ),
+                        h(
+                          'div',
+                          {class: 'text-subtitle1 text-weight-medium'},
+                          this.bitcoinRate.data.source || 'External rate'
+                        )
+                      ]),
+                      h('div', {class: 'col-12 col-sm-4'}, [
+                        h(
+                          'div',
+                          {class: 'text-caption text-grey-5'},
+                          'BTC/USD'
+                        ),
+                        h(
+                          'div',
+                          {class: 'text-subtitle1 text-weight-medium'},
+                          this.formatUsd(this.bitcoinRate.data.btcUsd)
+                        )
+                      ]),
+                      h('div', {class: 'col-12 col-sm-4'}, [
+                        h(
+                          'div',
+                          {class: 'text-caption text-grey-5'},
+                          '1,000 sats'
+                        ),
+                        h(
+                          'div',
+                          {class: 'text-subtitle1 text-weight-medium'},
+                          this.formatUsd(this.bitcoinRate.data.sampleAmountUsd)
+                        )
+                      ])
+                    ])
+                  : h(
+                      'p',
+                      {class: 'muted q-my-none'},
+                      this.bitcoinRate.error || 'Rate unavailable.'
+                    )
+              ]
+            }
+          )
+        ]),
+
         h('div', {class: 'col-12'}, [
           h(
             QCard,

@@ -51,6 +51,10 @@
         return request(`${baseUrl}/wallets`)
       },
 
+      getBitcoinRate() {
+        return request(`${baseUrl}/rate/bitcoin`)
+      },
+
       getPublicJar(jarId) {
         return request(`${baseUrl}/jars/${encodeURIComponent(jarId)}`)
       },

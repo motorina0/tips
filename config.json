@@ -29,6 +29,10 @@
         "visibility": "authenticated"
       },
       {
+        "name": "get-bitcoin-rate",
+        "visibility": "authenticated"
+      },
+      {
         "name": "get-public-tip-jar",
         "visibility": "public"
       },
@@ -103,6 +107,12 @@
     },
     {
       "method": "GET",
+      "path": "/rate/bitcoin",
+      "export": "get-bitcoin-rate",
+      "auth": "user"
+    },
+    {
+      "method": "GET",
       "path": "/jars/{jar_id}",
       "export": "get-public-tip-jar",
       "auth": "public",
@@ -170,6 +180,15 @@
       "id": "wallet.list",
       "label": "List wallets",
       "description": "Show the installing user's wallets so a tip jar can receive invoices."
+    },
+    {
+      "id": "http.request",
+      "description": "Fetch public Bitcoin/USD rates for approximate fiat display.",
+      "policy": {
+        "hosts": [
+          "https://api.coingecko.com"
+        ]
+      }
     }
   ],
   "build": {
