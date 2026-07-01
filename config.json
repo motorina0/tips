@@ -30,7 +30,7 @@
       },
       {
         "name": "get-bitcoin-rate",
-        "visibility": "authenticated"
+        "visibility": "public"
       },
       {
         "name": "get-public-tip-jar",
@@ -109,7 +109,7 @@
       "method": "GET",
       "path": "/rate/bitcoin",
       "export": "get-bitcoin-rate",
-      "auth": "user"
+      "auth": "public"
     },
     {
       "method": "GET",
@@ -185,6 +185,7 @@
       "id": "http.request",
       "description": "Fetch public Bitcoin/USD rates for approximate fiat display.",
       "policy": {
+        "allow_public": true,
         "hosts": [
           "https://api.coingecko.com"
         ]
