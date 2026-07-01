@@ -1,5 +1,4 @@
 const state = {
-  bitcoinRate: null,
   invoiceUnsubscribe: null,
   jarId: null,
   qrApp: null
@@ -19,10 +18,6 @@ const invoiceStatus = document.querySelector('#invoice-status')
 const copyInvoiceButton = document.querySelector('#copy-invoice-button')
 const confettiLayer = document.querySelector('#confetti-layer')
 runtimeStatus.textContent = 'sandbox bridge'
-
-tipForm
-  .querySelector('[name="amount"]')
-  ?.addEventListener('input', renderRateEstimate)
 
 createInvoiceButton.addEventListener('click', async event => {
   event.preventDefault()
@@ -62,12 +57,6 @@ async function init() {
   const context = await client.context()
   state.jarId = context.routeParams?.jarId || null
   await renderPublicPage()
-  fetchBitcoinRate().catch(() => {})
-}
-
-async function fetchBitcoinRate() {
-  state.bitcoinRate = await client.getBitcoinRate()
-  renderRateEstimate()
 }
 
 async function renderPublicPage() {
@@ -99,17 +88,11 @@ async function renderPublicPage() {
     chip.textContent = `${amount} sats`
     chip.addEventListener('click', () => {
       tipForm.elements.amount.value = amount
-      renderRateEstimate()
     })
     amounts.append(chip)
   }
 
-  const rateEstimate = document.createElement('p')
-  rateEstimate.id = 'rate-estimate'
-  rateEstimate.className = 'muted'
-
-  publicPage.append(title, description, amounts, rateEstimate)
-  renderRateEstimate()
+  publicPage.append(title, description, amounts)
 
   if (tips.length) {
     const recent = document.createElement('p')
@@ -117,31 +100,6 @@ async function renderPublicPage() {
     recent.textContent = `${tips.length} paid tip${tips.length === 1 ? '' : 's'}`
     publicPage.append(recent)
   }
-}
-
-function renderRateEstimate() {
-  const element = document.querySelector('#rate-estimate')
-  if (!element) return
-
-  const btcUsd = Number(state.bitcoinRate?.btcUsd)
-  const amountSat = Number(fieldValue(tipForm, 'amount'))
-  if (!Number.isFinite(btcUsd) || btcUsd <= 0 || amountSat <= 0) {
-    element.textContent = 'Exchange rate unavailable.'
-    return
-  }
-
-  const usd = (amountSat / 100000000) * btcUsd
-  element.textContent = `${amountSat} sats ≈ ${formatUsd(usd)}`
-}
-
-function formatUsd(value) {
-  const amount = Number(value)
-  if (!Number.isFinite(amount)) return '-'
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: amount >= 1 ? 2 : 4
-  }).format(amount)
 }
 
 function setInvoiceLoading(loading) {
