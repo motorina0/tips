@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "description": "Store the default currency on each tip jar.",
+  "operations": [
+    {
+      "op": "add_field",
+      "table": "tip_jars",
+      "field": "currency",
+      "type": "string",
+      "default": "sat"
+    }
+  ]
+}

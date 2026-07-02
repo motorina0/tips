@@ -59,6 +59,10 @@
         return request(`${baseUrl}/rate/bitcoin`)
       },
 
+      listCurrencies() {
+        return request(`${baseUrl}/currencies`)
+      },
+
       getPublicJar(jarId) {
         return request(`${baseUrl}/jars/${encodeURIComponent(jarId)}`)
       },

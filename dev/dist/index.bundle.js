@@ -11,7 +11,21 @@ import {
   storageGet,
   storageGetPublic,
   storageGetPaginated,
-  storageSet
+  storageSet,
+  utilsCurrenciesConvert,
+  utilsCurrenciesFiatToSats,
+  utilsCurrenciesList,
+  utilsCurrenciesRate,
+  utilsCurrenciesSatsToFiat,
+  utilsLightningDecodeInvoice,
+  utilsLightningInvoiceAmountMsat,
+  utilsLightningInvoiceExpiry,
+  utilsLightningInvoiceMemo,
+  utilsLightningInvoicePaymentHash,
+  utilsLightningRandomSecretAndHash,
+  utilsLightningValidateInvoice,
+  utilsLightningVerifyPreimage,
+  utilsServerHealth
 } from 'lnbits:extension/host'
 
 const extensionApi = {
@@ -53,7 +67,7 @@ const extensionApi = {
     createInvoice(input) {
       return createInvoice({
         ...input,
-        amountSat: BigInt(input.amountSat),
+        amount: Number(input.amount),
         extra: Object.entries(input.extra || {}).map(([key, value]) => [
           key,
           String(value)
@@ -101,6 +115,70 @@ const extensionApi = {
         path: input.path,
         body: input.body ?? undefined
       })
+    }
+  },
+
+  utils: {
+    currencies: {
+      list() {
+        return utilsCurrenciesList()
+      },
+
+      rate(input) {
+        return utilsCurrenciesRate(input)
+      },
+
+      convert(input) {
+        return utilsCurrenciesConvert(input)
+      },
+
+      fiatToSats(input) {
+        return utilsCurrenciesFiatToSats(input)
+      },
+
+      satsToFiat(input) {
+        return utilsCurrenciesSatsToFiat(input)
+      }
+    },
+
+    server: {
+      health() {
+        return utilsServerHealth()
+      }
+    },
+
+    lightning: {
+      decodeInvoice(input) {
+        return utilsLightningDecodeInvoice(input)
+      },
+
+      validateInvoice(input) {
+        return utilsLightningValidateInvoice(input)
+      },
+
+      invoicePaymentHash(input) {
+        return utilsLightningInvoicePaymentHash(input)
+      },
+
+      invoiceAmountMsat(input) {
+        return utilsLightningInvoiceAmountMsat(input)
+      },
+
+      invoiceExpiry(input) {
+        return utilsLightningInvoiceExpiry(input)
+      },
+
+      invoiceMemo(input) {
+        return utilsLightningInvoiceMemo(input)
+      },
+
+      verifyPreimage(input) {
+        return utilsLightningVerifyPreimage(input)
+      },
+
+      randomSecretAndHash(input) {
+        return utilsLightningRandomSecretAndHash(input)
+      }
     }
   },
 
@@ -164,7 +242,7 @@ const wallet = {
     return extensionApi.wallet.listUserWallets().wallets || []
   },
 
-  createInvoice({walletId, amountSat, memo, tag, extra = {}}) {
+  createInvoice({walletId, amount, currency = 'sat', memo, tag, extra = {}}) {
     const invoiceExtra = {
       tag,
       ...extra
@@ -172,8 +250,8 @@ const wallet = {
 
     return extensionApi.wallet.createInvoice({
       walletId,
-      amountSat,
-      currency: 'sat',
+      amount,
+      currency,
       memo,
       tag,
       extra: invoiceExtra
@@ -223,6 +301,92 @@ const extension = {
   }
 }
 
+const utils = {
+  currencies: {
+    list() {
+      return ['sat', ...(extensionApi.utils.currencies.list().currencies || [])]
+    },
+
+    rate(currency) {
+      return extensionApi.utils.currencies.rate({currency})
+    },
+
+    convert({amount, from, to}) {
+      const response = extensionApi.utils.currencies.convert({
+        amount,
+        fromCurrency: from,
+        to
+      })
+      return Object.fromEntries(response.amounts || [])
+    },
+
+    fiatToSats(amount, currency) {
+      return Number(
+        extensionApi.utils.currencies.fiatToSats({
+          amount,
+          currency
+        }).amountSat || 0
+      )
+    },
+
+    satsToFiat(amount, currency) {
+      return Number(
+        extensionApi.utils.currencies.satsToFiat({
+          amount,
+          currency
+        }).amount || 0
+      )
+    }
+  },
+
+  server: {
+    health() {
+      return extensionApi.utils.server.health()
+    }
+  },
+
+  lightning: {
+    decodeInvoice(bolt11) {
+      return extensionApi.utils.lightning.decodeInvoice({bolt11})
+    },
+
+    validateInvoice(bolt11) {
+      return extensionApi.utils.lightning.validateInvoice({bolt11})
+    },
+
+    invoicePaymentHash(bolt11) {
+      return extensionApi.utils.lightning.invoicePaymentHash({bolt11}).paymentHash
+    },
+
+    invoiceAmountMsat(bolt11) {
+      return Number(
+        extensionApi.utils.lightning.invoiceAmountMsat({bolt11}).amountMsat || 0
+      )
+    },
+
+    invoiceExpiry(bolt11) {
+      return Number(
+        extensionApi.utils.lightning.invoiceExpiry({bolt11}).expiresAt || 0
+      )
+    },
+
+    invoiceMemo(bolt11) {
+      return extensionApi.utils.lightning.invoiceMemo({bolt11}).memo || ''
+    },
+
+    verifyPreimage(preimage, paymentHash) {
+      return extensionApi.utils.lightning.verifyPreimage({
+        preimage,
+        paymentHash
+      }).valid
+    },
+
+    randomSecretAndHash(length = 32) {
+      return extensionApi.utils.lightning.randomSecretAndHash({length})
+    }
+  }
+}
+
 const system = {
   id(prefix) {
     return extensionApi.system.id({prefix}).id
@@ -248,8 +412,6 @@ const JAR_SEARCH_FIELDS = [
   'thank_you_message'
 ]
 const TIP_SEARCH_FIELDS = ['name', 'message', 'payment_hash']
-const BITCOIN_USD_RATE_URL =
-  'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd'
 const WATCHONLY_EXTENSION_ID = 'watchonly'
 
 export function createTipJar(requestJson) {
@@ -259,6 +421,7 @@ export function createTipJar(requestJson) {
     const title = cleanText(request.title, 80) || 'Tip jar'
     const description = cleanText(request.description, 280)
     const paymentMethod = normalizePaymentMethod(request.paymentMethod)
+    const currency = normalizeCurrency(request.currency)
     const walletId =
       paymentMethod === 'lightning'
         ? requiredText(request.walletId, 'walletId', 128)
@@ -279,7 +442,7 @@ export function createTipJar(requestJson) {
       paymentMethod === 'onchain' ? freshWatchonlyAddress(watchonlyWalletId) : ''
     const thankYouMessage =
       cleanText(request.thankYouMessage, 160) || 'Thanks for the tip.'
-    const suggestedAmounts = normalizeAmounts(request.suggestedAmounts)
+    const suggestedAmounts = normalizeAmounts(request.suggestedAmounts, currency)
     const timestamp = system.now()
 
     const jar = {
@@ -287,6 +450,7 @@ export function createTipJar(requestJson) {
       title,
       description,
       payment_method: paymentMethod,
+      currency,
       wallet_id: walletId,
       wallet_name: walletName,
       watchonly_wallet_id: watchonlyWalletId,
@@ -369,6 +533,12 @@ export function getBitcoinRate(_requestJson) {
   return runJson(() => bitcoinUsdRate())
 }
 
+export function listTipCurrencies(_requestJson) {
+  return runJson(() => {
+    return {currencies: utils.currencies.list()}
+  })
+}
+
 export function getPublicTipJar(requestJson) {
   return runJson(() => {
     const request = parseJsonObject(requestJson)
@@ -386,7 +556,8 @@ export function createTipInvoice(requestJson) {
     if (jar.paymentMethod === 'onchain') {
       throw new Error('Onchain tip jars do not create Lightning invoices.')
     }
-    const amount = normalizeAmount(request.amount ?? request.amountSat)
+    const currency = normalizeCurrency(request.currency || jar.currency)
+    const amount = normalizeAmount(request.amount ?? request.amountSat, currency)
     const name = cleanText(request.name, 60) || 'Anonymous'
     const message = cleanText(request.message, 280)
     const memo = message ? `${jar.title}: ${message}` : jar.title
@@ -394,7 +565,7 @@ export function createTipInvoice(requestJson) {
     const invoice = wallet.createInvoicePublic({
       sourceId: jarId,
       amount,
-      currency: 'sat',
+      currency,
       memo,
       extra: {name, message}
     })
@@ -541,29 +712,17 @@ function eventAmountSat(event) {
 }
 
 function bitcoinUsdRate() {
-  const response = http.request({
-    method: 'GET',
-    url: BITCOIN_USD_RATE_URL,
-    headers: {
-      accept: 'application/json'
-    }
-  })
-
-  if (response.statusCode !== 200) {
-    throw new Error(`Rate provider returned HTTP ${response.statusCode}.`)
-  }
-
-  const data = parseJsonObject(response.body)
-  const btcUsd = Number(data.bitcoin?.usd)
+  const {rate, price} = utils.currencies.rate('USD')
+  const btcUsd = Number(price)
   if (!Number.isFinite(btcUsd) || btcUsd <= 0) {
-    throw new Error('Rate provider returned an invalid Bitcoin price.')
+    throw new Error('LNbits returned an invalid Bitcoin price.')
   }
 
   return {
-    source: 'CoinGecko',
+    source: 'LNbits',
     currency: 'USD',
     btcUsd,
-    satsPerUsd: Math.round(100000000 / btcUsd),
+    satsPerUsd: Math.round(Number(rate) || 0),
     sampleAmountSat: 1000,
     sampleAmountUsd: satsToUsd(1000, btcUsd),
     fetchedAt: system.now()
@@ -618,6 +777,7 @@ function publicJar(jar) {
     title: jar.title,
     description: jar.description,
     paymentMethod: jar.payment_method || 'lightning',
+    currency: normalizeCurrency(jar.currency || 'sat'),
     walletName:
       jar.payment_method === 'onchain'
         ? jar.watchonly_wallet_name
@@ -652,23 +812,48 @@ function privateTip(tip, jar) {
   }
 }
 
-function normalizeAmounts(value) {
-  const amounts = Array.isArray(value) ? value : [100, 500, 1000]
+function normalizeAmounts(value, currency = 'sat') {
+  const fallback = currency === 'sat' ? [100, 500, 1000] : [1, 5, 10]
+  const amounts = Array.isArray(value) ? value : fallback
   const clean = amounts
     .map(amount => Number(amount))
-    .filter(amount => Number.isInteger(amount) && amount > 0 && amount <= 10000000)
-  return clean.length ? [...new Set(clean)].slice(0, 6) : [100, 500, 1000]
+    .filter(amount => isValidAmount(amount, currency))
+    .map(amount => normalizedAmountValue(amount, currency))
+  return clean.length ? [...new Set(clean)].slice(0, 6) : fallback
 }
 
-function normalizeAmount(value) {
+function normalizeAmount(value, currency = 'sat') {
   const amount = Number(value)
-  if (!Number.isInteger(amount) || amount <= 0) {
-    throw new Error('amount must be a positive integer.')
+  if (!isValidAmount(amount, currency)) {
+    throw new Error('amount must be a positive value.')
   }
+  return normalizedAmountValue(amount, currency)
+}
+
+function isValidAmount(amount, currency) {
+  if (!Number.isFinite(amount) || amount <= 0) return false
+  if (currency === 'sat' && !Number.isInteger(amount)) return false
   if (amount > 10000000) {
-    throw new Error('amount exceeds the extension limit.')
+    return false
   }
-  return amount
+  return true
+}
+
+function normalizedAmountValue(amount, currency) {
+  if (currency === 'sat') return Math.trunc(amount)
+  return Number(amount.toFixed(2))
+}
+
+function normalizeCurrency(value) {
+  const currency = cleanText(value, 8).toUpperCase()
+  const normalized = currency === 'SATS' ? 'sat' : currency || 'sat'
+  if (normalized === 'SAT') return 'sat'
+  if (normalized === 'sat') return normalized
+  const allowedCurrencies = utils.currencies.list()
+  if (!allowedCurrencies.includes(normalized)) {
+    throw new Error('currency is not supported.')
+  }
+  return normalized
 }
 
 function normalizePageSize(value) {

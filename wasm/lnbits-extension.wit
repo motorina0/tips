@@ -46,7 +46,7 @@ interface host {
 
   record invoice-request {
     wallet-id: string,
-    amount-sat: u64,
+    amount: f64,
     currency: string,
     memo: string,
     tag: string,
@@ -97,6 +97,104 @@ interface host {
     body: option<string>
   }
 
+  record currency-list-response {
+    currencies: list<string>
+  }
+
+  record currency-rate-request {
+    currency: string
+  }
+
+  record currency-rate-response {
+    rate: f64,
+    price: f64
+  }
+
+  record currency-convert-request {
+    amount: f64,
+    from-currency: string,
+    to: string
+  }
+
+  record currency-convert-response {
+    amounts: list<tuple<string, f64>>
+  }
+
+  record fiat-to-sats-request {
+    amount: f64,
+    currency: string
+  }
+
+  record fiat-to-sats-response {
+    amount-sat: u64
+  }
+
+  record sats-to-fiat-request {
+    amount: f64,
+    currency: string
+  }
+
+  record sats-to-fiat-response {
+    amount: f64
+  }
+
+  record server-health-response {
+    server-time: u64,
+    up-time: string
+  }
+
+  record bolt11-request {
+    bolt11: string
+  }
+
+  record decode-invoice-response {
+    valid: bool,
+    payment-hash: option<string>,
+    amount-msat: option<u64>,
+    expiry: option<u64>,
+    expires-at: option<u64>,
+    memo: option<string>
+  }
+
+  record validate-invoice-response {
+    valid: bool,
+    error: option<string>
+  }
+
+  record invoice-payment-hash-response {
+    payment-hash: string
+  }
+
+  record invoice-amount-msat-response {
+    amount-msat: option<u64>
+  }
+
+  record invoice-expiry-response {
+    expires-at: option<u64>
+  }
+
+  record invoice-memo-response {
+    memo: option<string>
+  }
+
+  record verify-preimage-request {
+    preimage: string,
+    payment-hash: string
+  }
+
+  record verify-preimage-response {
+    valid: bool
+  }
+
+  record random-secret-and-hash-request {
+    length: u32
+  }
+
+  record random-secret-and-hash-response {
+    secret: string,
+    hash: string
+  }
+
   record random-id-request {
     prefix: string
   }
@@ -128,6 +226,20 @@ interface host {
   list-user-wallets: func() -> list-user-wallets-response;
   http-request: func(request: http-request-options) -> http-response-data;
   extension-api-request: func(request: extension-api-request-options) -> http-response-data;
+  utils-currencies-list: func() -> currency-list-response;
+  utils-currencies-rate: func(request: currency-rate-request) -> currency-rate-response;
+  utils-currencies-convert: func(request: currency-convert-request) -> currency-convert-response;
+  utils-currencies-fiat-to-sats: func(request: fiat-to-sats-request) -> fiat-to-sats-response;
+  utils-currencies-sats-to-fiat: func(request: sats-to-fiat-request) -> sats-to-fiat-response;
+  utils-server-health: func() -> server-health-response;
+  utils-lightning-decode-invoice: func(request: bolt11-request) -> decode-invoice-response;
+  utils-lightning-validate-invoice: func(request: bolt11-request) -> validate-invoice-response;
+  utils-lightning-invoice-payment-hash: func(request: bolt11-request) -> invoice-payment-hash-response;
+  utils-lightning-invoice-amount-msat: func(request: bolt11-request) -> invoice-amount-msat-response;
+  utils-lightning-invoice-expiry: func(request: bolt11-request) -> invoice-expiry-response;
+  utils-lightning-invoice-memo: func(request: bolt11-request) -> invoice-memo-response;
+  utils-lightning-verify-preimage: func(request: verify-preimage-request) -> verify-preimage-response;
+  utils-lightning-random-secret-and-hash: func(request: random-secret-and-hash-request) -> random-secret-and-hash-response;
   random-id: func(request: random-id-request) -> random-id-response;
   now: func() -> now-response;
   log: func(request: log-request) -> log-response;
@@ -142,6 +254,7 @@ world tips {
   export list-tip-wallets: func(request-json: string) -> string;
   export list-tip-watchonly-wallets: func(request-json: string) -> string;
   export get-bitcoin-rate: func(request-json: string) -> string;
+  export list-tip-currencies: func(request-json: string) -> string;
   export get-public-tip-jar: func(request-json: string) -> string;
   export create-tip-invoice: func(request-json: string) -> string;
   export record-payment: func(event-json: string) -> string;

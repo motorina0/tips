@@ -11,7 +11,21 @@ import {
   storageGet,
   storageGetPublic,
   storageGetPaginated,
-  storageSet
+  storageSet,
+  utilsCurrenciesConvert,
+  utilsCurrenciesFiatToSats,
+  utilsCurrenciesList,
+  utilsCurrenciesRate,
+  utilsCurrenciesSatsToFiat,
+  utilsLightningDecodeInvoice,
+  utilsLightningInvoiceAmountMsat,
+  utilsLightningInvoiceExpiry,
+  utilsLightningInvoiceMemo,
+  utilsLightningInvoicePaymentHash,
+  utilsLightningRandomSecretAndHash,
+  utilsLightningValidateInvoice,
+  utilsLightningVerifyPreimage,
+  utilsServerHealth
 } from 'lnbits:extension/host'
 
 export const extensionApi = {
@@ -53,7 +67,7 @@ export const extensionApi = {
     createInvoice(input) {
       return createInvoice({
         ...input,
-        amountSat: BigInt(input.amountSat),
+        amount: Number(input.amount),
         extra: Object.entries(input.extra || {}).map(([key, value]) => [
           key,
           String(value)
@@ -101,6 +115,70 @@ export const extensionApi = {
         path: input.path,
         body: input.body ?? undefined
       })
+    }
+  },
+
+  utils: {
+    currencies: {
+      list() {
+        return utilsCurrenciesList()
+      },
+
+      rate(input) {
+        return utilsCurrenciesRate(input)
+      },
+
+      convert(input) {
+        return utilsCurrenciesConvert(input)
+      },
+
+      fiatToSats(input) {
+        return utilsCurrenciesFiatToSats(input)
+      },
+
+      satsToFiat(input) {
+        return utilsCurrenciesSatsToFiat(input)
+      }
+    },
+
+    server: {
+      health() {
+        return utilsServerHealth()
+      }
+    },
+
+    lightning: {
+      decodeInvoice(input) {
+        return utilsLightningDecodeInvoice(input)
+      },
+
+      validateInvoice(input) {
+        return utilsLightningValidateInvoice(input)
+      },
+
+      invoicePaymentHash(input) {
+        return utilsLightningInvoicePaymentHash(input)
+      },
+
+      invoiceAmountMsat(input) {
+        return utilsLightningInvoiceAmountMsat(input)
+      },
+
+      invoiceExpiry(input) {
+        return utilsLightningInvoiceExpiry(input)
+      },
+
+      invoiceMemo(input) {
+        return utilsLightningInvoiceMemo(input)
+      },
+
+      verifyPreimage(input) {
+        return utilsLightningVerifyPreimage(input)
+      },
+
+      randomSecretAndHash(input) {
+        return utilsLightningRandomSecretAndHash(input)
+      }
     }
   },
 
@@ -164,7 +242,7 @@ export const wallet = {
     return extensionApi.wallet.listUserWallets().wallets || []
   },
 
-  createInvoice({walletId, amountSat, memo, tag, extra = {}}) {
+  createInvoice({walletId, amount, currency = 'sat', memo, tag, extra = {}}) {
     const invoiceExtra = {
       tag,
       ...extra
@@ -172,8 +250,8 @@ export const wallet = {
 
     return extensionApi.wallet.createInvoice({
       walletId,
-      amountSat,
-      currency: 'sat',
+      amount,
+      currency,
       memo,
       tag,
       extra: invoiceExtra
@@ -219,6 +297,92 @@ export const extension = {
       statusCode: Number(response.statusCode || 0),
       headers: Object.fromEntries(response.headers || []),
       body: response.body || ''
+    }
+  }
+}
+
+export const utils = {
+  currencies: {
+    list() {
+      return ['sat', ...(extensionApi.utils.currencies.list().currencies || [])]
+    },
+
+    rate(currency) {
+      return extensionApi.utils.currencies.rate({currency})
+    },
+
+    convert({amount, from, to}) {
+      const response = extensionApi.utils.currencies.convert({
+        amount,
+        fromCurrency: from,
+        to
+      })
+      return Object.fromEntries(response.amounts || [])
+    },
+
+    fiatToSats(amount, currency) {
+      return Number(
+        extensionApi.utils.currencies.fiatToSats({
+          amount,
+          currency
+        }).amountSat || 0
+      )
+    },
+
+    satsToFiat(amount, currency) {
+      return Number(
+        extensionApi.utils.currencies.satsToFiat({
+          amount,
+          currency
+        }).amount || 0
+      )
+    }
+  },
+
+  server: {
+    health() {
+      return extensionApi.utils.server.health()
+    }
+  },
+
+  lightning: {
+    decodeInvoice(bolt11) {
+      return extensionApi.utils.lightning.decodeInvoice({bolt11})
+    },
+
+    validateInvoice(bolt11) {
+      return extensionApi.utils.lightning.validateInvoice({bolt11})
+    },
+
+    invoicePaymentHash(bolt11) {
+      return extensionApi.utils.lightning.invoicePaymentHash({bolt11}).paymentHash
+    },
+
+    invoiceAmountMsat(bolt11) {
+      return Number(
+        extensionApi.utils.lightning.invoiceAmountMsat({bolt11}).amountMsat || 0
+      )
+    },
+
+    invoiceExpiry(bolt11) {
+      return Number(
+        extensionApi.utils.lightning.invoiceExpiry({bolt11}).expiresAt || 0
+      )
+    },
+
+    invoiceMemo(bolt11) {
+      return extensionApi.utils.lightning.invoiceMemo({bolt11}).memo || ''
+    },
+
+    verifyPreimage(preimage, paymentHash) {
+      return extensionApi.utils.lightning.verifyPreimage({
+        preimage,
+        paymentHash
+      }).valid
+    },
+
+    randomSecretAndHash(length = 32) {
+      return extensionApi.utils.lightning.randomSecretAndHash({length})
     }
   }
 }

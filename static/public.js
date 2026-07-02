@@ -1,5 +1,7 @@
 const state = {
+  currencies: ['sat'],
   invoiceUnsubscribe: null,
+  jar: null,
   jarId: null,
   qrApp: null
 }
@@ -27,7 +29,7 @@ createInvoiceButton.addEventListener('click', async event => {
     const payload = {
       jarId: state.jarId,
       amount: Number(fieldValue(tipForm, 'amount')),
-      currency: 'sat',
+      currency: fieldValue(tipForm, 'currency') || state.jar?.currency || 'sat',
       name: fieldValue(tipForm, 'name'),
       message: fieldValue(tipForm, 'message')
     }
@@ -57,7 +59,13 @@ init().catch(showError)
 async function init() {
   const context = await client.context()
   state.jarId = context.routeParams?.jarId || null
+  await fetchCurrencies()
   await renderPublicPage()
+}
+
+async function fetchCurrencies() {
+  const response = await client.listCurrencies()
+  state.currencies = [...new Set(['sat', ...(response.currencies || [])])]
 }
 
 async function renderPublicPage() {
@@ -69,10 +77,13 @@ async function renderPublicPage() {
 
   const response = await client.getPublicJar(state.jarId)
   const jar = response.jar
+  state.jar = jar
   const tips = response.tips || []
   const isOnchain = jar.paymentMethod === 'onchain'
 
   setInvoiceFormVisible(!isOnchain)
+  setCurrencyOptions(jar.currency || 'sat')
+  setDefaultAmount(jar)
 
   publicPage.innerHTML = ''
   const title = document.createElement('h2')
@@ -94,9 +105,10 @@ async function renderPublicPage() {
     for (const amount of jar.suggestedAmounts || []) {
       const chip = document.createElement('span')
       chip.className = 'amount-chip'
-      chip.textContent = `${amount} sats`
+      chip.textContent = `${amount} ${currencyLabel(jar.currency || 'sat')}`
       chip.addEventListener('click', () => {
         tipForm.elements.amount.value = amount
+        tipForm.elements.currency.value = jar.currency || 'sat'
       })
       amounts.append(chip)
     }
@@ -110,6 +122,37 @@ async function renderPublicPage() {
     recent.textContent = `${tips.length} paid tip${tips.length === 1 ? '' : 's'}`
     publicPage.append(recent)
   }
+}
+
+function setDefaultAmount(jar) {
+  const amountInput = tipForm.elements.amount
+  if (!amountInput) return
+  const suggestedAmounts = Array.isArray(jar.suggestedAmounts)
+    ? jar.suggestedAmounts
+    : []
+  amountInput.value =
+    suggestedAmounts.length > 0
+      ? suggestedAmounts[0]
+      : jar.currency === 'sat'
+        ? 500
+        : 5
+}
+
+function setCurrencyOptions(defaultCurrency) {
+  const select = tipForm.elements.currency
+  if (!select) return
+  select.innerHTML = ''
+  for (const currency of state.currencies) {
+    const option = document.createElement('option')
+    option.value = currency
+    option.textContent = currencyLabel(currency)
+    select.append(option)
+  }
+  select.value = state.currencies.includes(defaultCurrency) ? defaultCurrency : 'sat'
+}
+
+function currencyLabel(currency) {
+  return currency === 'sat' ? 'sats' : currency
 }
 
 function onchainAddressPanel(address) {

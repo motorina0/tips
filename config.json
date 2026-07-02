@@ -5,6 +5,7 @@
   "tile": "/ext-assets/tips/assets/icon.png",
   "version": "0.0.1",
   "min_lnbits_version": "1.5.5",
+
   "extension_type": "wasm",
   "wasm": {
     "module": "wasm/module.wasm",
@@ -35,6 +36,10 @@
       {
         "name": "get-bitcoin-rate",
         "visibility": "authenticated"
+      },
+      {
+        "name": "list-tip-currencies",
+        "visibility": "public"
       },
       {
         "name": "get-public-tip-jar",
@@ -123,6 +128,12 @@
     },
     {
       "method": "GET",
+      "path": "/currencies",
+      "export": "list-tip-currencies",
+      "auth": "public"
+    },
+    {
+      "method": "GET",
       "path": "/jars/{jar_id}",
       "export": "get-public-tip-jar",
       "auth": "public",
@@ -156,6 +167,7 @@
               "title",
               "description",
               "payment_method",
+              "currency",
               "suggested_amounts",
               "thank_you_message",
               "onchain_address"
@@ -194,13 +206,8 @@
       "description": "Show the installing user's wallets so a tip jar can receive invoices."
     },
     {
-      "id": "http.request",
-      "description": "Fetch public Bitcoin/USD rates for approximate fiat display.",
-      "policy": {
-        "hosts": [
-          "https://api.coingecko.com"
-        ]
-      }
+      "id": "utils.basic",
+      "description": "Use LNbits currency conversion and Lightning invoice utility functions."
     },
     {
       "id": "extension.api.request",

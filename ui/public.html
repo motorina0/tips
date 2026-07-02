@@ -45,10 +45,16 @@
               <h2 class="text-h6 text-weight-bold q-my-none">Leave a Tip</h2>
             </div>
             <div id="tip-form" class="form q-gutter-md">
-              <label>
-                <span class="text-caption text-grey-5">Amount</span>
-                <input name="amount" inputmode="numeric" value="500" />
-              </label>
+              <div class="amount-currency-row">
+                <label>
+                  <span class="text-caption text-grey-5">Amount</span>
+                  <input name="amount" inputmode="decimal" value="500" />
+                </label>
+                <label>
+                  <span class="text-caption text-grey-5">Currency</span>
+                  <select name="currency"></select>
+                </label>
+              </div>
               <label>
                 <span class="text-caption text-grey-5">Name</span>
                 <input name="name" value="Satoshi" maxlength="60" />

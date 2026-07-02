@@ -10,6 +10,7 @@ const app = Vue.createApp({
         title: 'Support the project',
         description: 'Leave a tip and a short message.',
         paymentMethod: 'lightning',
+        currency: 'sat',
         walletId: null,
         watchonlyWalletId: null,
         suggestedAmounts: '100,500,1000',
@@ -42,6 +43,13 @@ const app = Vue.createApp({
             align: 'left',
             label: 'Description',
             field: 'description',
+            sortable: false
+          },
+          {
+            name: 'currency',
+            align: 'left',
+            label: 'Currency',
+            field: 'currency',
             sortable: false
           },
           {
@@ -141,6 +149,7 @@ const app = Vue.createApp({
         search: ''
       },
       wallets: [],
+      currencies: ['sat'],
       watchonlyWallets: [],
       watchonlyWalletsLoading: false
     }
@@ -151,6 +160,23 @@ const app = Vue.createApp({
       if (value === 'onchain') {
         this.fetchWatchonlyWallets()
       }
+    },
+
+    'form.currency'(value, previous) {
+      if (
+        previous === 'sat' &&
+        value !== 'sat' &&
+        this.form.suggestedAmounts === '100,500,1000'
+      ) {
+        this.form.suggestedAmounts = '1,5,10'
+      }
+      if (
+        previous !== 'sat' &&
+        value === 'sat' &&
+        this.form.suggestedAmounts === '1,5,10'
+      ) {
+        this.form.suggestedAmounts = '100,500,1000'
+      }
     }
   },
 
@@ -159,6 +185,13 @@ const app = Vue.createApp({
       return this.wallets.map(wallet => ({
         label: wallet.name,
         value: wallet.id
+      }))
+    },
+
+    currencyOptions() {
+      return this.currencies.map(currency => ({
+        label: currency === 'sat' ? 'sats' : currency,
+        value: currency
       }))
     },
 
@@ -179,6 +212,7 @@ const app = Vue.createApp({
 
   async mounted() {
     await Promise.all([
+      this.fetchCurrencies(),
       this.fetchWallets(),
       this.fetchJars(),
       this.fetchBitcoinRate()
@@ -207,6 +241,16 @@ const app = Vue.createApp({
         if (!this.form.walletId && this.wallets.length) {
           this.form.walletId = this.wallets[0].id
         }
+      } catch (error) {
+        this.showError(error)
+      }
+    },
+
+    async fetchCurrencies() {
+      try {
+        const response = await client.listCurrencies()
+        const currencies = response.currencies || []
+        this.currencies = [...new Set(['sat', ...currencies])]
       } catch (error) {
         this.showError(error)
       }
@@ -276,6 +320,7 @@ const app = Vue.createApp({
           title: this.form.title,
           description: this.form.description,
           paymentMethod: this.form.paymentMethod,
+          currency: this.form.currency,
           walletId: this.form.walletId,
           walletName: wallet?.name || this.form.walletId,
           watchonlyWalletId: this.form.watchonlyWalletId,
@@ -597,8 +642,21 @@ const app = Vue.createApp({
                             options: this.walletOptions,
                             disable: !this.walletOptions.length
                           }),
+                      h(QSelect, {
+                        modelValue: this.form.currency,
+                        'onUpdate:modelValue': value => {
+                          this.form.currency = value || 'sat'
+                        },
+                        dark: true,
+                        filled: true,
+                        dense: true,
+                        emitValue: true,
+                        mapOptions: true,
+                        label: 'Currency',
+                        options: this.currencyOptions
+                      }),
                       formInput('suggestedAmounts', {
-                        label: 'Suggested amounts'
+                        label: `Suggested amounts (${this.form.currency === 'sat' ? 'sats' : this.form.currency})`
                       }),
                       formInput('thankYouMessage', {
                         label: 'Thank you message',
