@@ -229,6 +229,7 @@ const app = Vue.createApp({
         this.bitcoinRate.data = null
         this.bitcoinRate.error =
           error instanceof Error ? error.message : String(error)
+        this.logFailure('Failed to load Bitcoin rate.', {error})
       } finally {
         this.bitcoinRate.loading = false
       }
@@ -396,12 +397,21 @@ const app = Vue.createApp({
     },
 
     async copyPublicUrl(url) {
-      await navigator.clipboard.writeText(url).catch(() => {})
+      await navigator.clipboard.writeText(url).catch(error => {
+        this.logFailure('Failed to copy public jar URL.', {url, error})
+      })
     },
 
     showError(error) {
       const message = error instanceof Error ? error.message : String(error)
-      client.notifyError(message).catch(() => {})
+      this.logFailure('Private page error.', {message, error})
+      client.notifyError(message).catch(notifyError => {
+        this.logFailure('Failed to notify private page error.', {notifyError})
+      })
+    },
+
+    logFailure(message, details = {}) {
+      console.error('[tips admin]', message, details)
     },
 
     formatTimestamp(timestamp) {

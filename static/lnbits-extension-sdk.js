@@ -1,6 +1,7 @@
 ;(function () {
   let bridgePortPromise = null
   const bridgeEventHandlers = new Map()
+  const LOG_PREFIX = '[tips extension]'
 
   function createLNbitsExtensionClient({extensionId}) {
     const baseUrl = `/api/v1/ext/${extensionId}`
@@ -81,20 +82,36 @@
   }
 
   function request(path, {method = 'GET', body = null} = {}) {
-    return bridgeRequest({
+    const message = {
       action: 'api',
       method,
       path,
       body
-    }).then(unwrapRuntimeResponse)
+    }
+
+    return bridgeRequest(message)
+      .then(unwrapRuntimeResponse)
+      .catch(error => {
+        logFailure('API request failed.', {method, path, body, error})
+        throw error
+      })
   }
 
   function bridgeRequest(message) {
     if (window.parent === window) {
-      return Promise.reject(new Error('LNbits extension bridge is not available.'))
+      const error = new Error('LNbits extension bridge is not available.')
+      logFailure('Bridge unavailable.', {message, error})
+      return Promise.reject(error)
     }
 
-    return getBridgePort().then(port => bridgePortRequest(port, message))
+    return getBridgePort()
+      .then(port => bridgePortRequest(port, message))
+      .catch(error => {
+        if (message.action !== 'api') {
+          logFailure('Bridge request failed.', {message, error})
+        }
+        throw error
+      })
   }
 
   function getBridgePort() {
@@ -113,7 +130,9 @@
       const timeout = window.setTimeout(() => {
         channel.port1.removeEventListener('message', onMessage)
         channel.port1.close()
-        reject(new Error('LNbits extension bridge timed out.'))
+        const error = new Error('LNbits extension bridge timed out.')
+        logFailure('Bridge connection timed out.', {id, error})
+        reject(error)
       }, 30000)
 
       function onMessage(event) {
@@ -153,7 +172,9 @@
     return new Promise((resolve, reject) => {
       const timeout = window.setTimeout(() => {
         port.removeEventListener('message', onMessage)
-        reject(new Error('LNbits extension bridge timed out.'))
+        const error = new Error('LNbits extension bridge timed out.')
+        logFailure('Bridge request timed out.', {id, message, error})
+        reject(error)
       }, 30000)
 
       function onMessage(event) {
@@ -171,7 +192,9 @@
         window.clearTimeout(timeout)
         port.removeEventListener('message', onMessage)
         if (response.ok === false) {
-          reject(new Error(response.error || 'Extension call failed.'))
+          const error = new Error(response.error || 'Extension call failed.')
+          logFailure('Bridge response failed.', {id, message, response, error})
+          reject(error)
           return
         }
         resolve(response.data)
@@ -222,13 +245,25 @@
           bridgeRequest({
             action: 'payment.unsubscribe',
             subscriptionId
-          }).catch(() => {})
+          }).catch(error => {
+            logFailure('Payment unsubscribe failed.', {subscriptionId, error})
+          })
         }
       })
       .catch(error => {
         bridgeEventHandlers.delete(subscriptionId)
+        logFailure('Payment subscription failed.', {
+          paymentHash,
+          subscriptionId,
+          error
+        })
         throw error
       })
+  }
+
+  function logFailure(message, details = {}) {
+    if (!window.console || typeof window.console.error !== 'function') return
+    window.console.error(LOG_PREFIX, message, details)
   }
 
   function requestId() {

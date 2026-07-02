@@ -47,7 +47,9 @@ createInvoiceButton.addEventListener('click', async event => {
 copyInvoiceButton.addEventListener('click', () => {
   const invoice = copyInvoiceButton.dataset.invoice || ''
   if (!invoice) return
-  navigator.clipboard?.writeText(invoice).catch(() => {})
+  navigator.clipboard?.writeText(invoice).catch(error => {
+    logFailure('Failed to copy invoice.', {error})
+  })
 })
 
 for (const closeControl of document.querySelectorAll('[data-close-invoice]')) {
@@ -59,13 +61,28 @@ init().catch(showError)
 async function init() {
   const context = await client.context()
   state.jarId = context.routeParams?.jarId || null
-  await fetchCurrencies()
   await renderPublicPage()
 }
 
-async function fetchCurrencies() {
-  const response = await client.listCurrencies()
-  state.currencies = [...new Set(['sat', ...(response.currencies || [])])]
+async function fetchCurrencies(defaultCurrency = 'sat') {
+  const fallback = ['sat', defaultCurrency].filter(Boolean)
+  if (typeof client.listCurrencies !== 'function') {
+    state.currencies = [...new Set(fallback)]
+    return
+  }
+
+  try {
+    const response = await client.listCurrencies()
+    state.currencies = [
+      ...new Set([...fallback, ...((response && response.currencies) || [])])
+    ]
+  } catch (error) {
+    state.currencies = [...new Set(fallback)]
+    logFailure('Failed to load currencies.', {error})
+    client.notifyError(error).catch(notifyError => {
+      logFailure('Failed to notify currency load error.', {notifyError})
+    })
+  }
 }
 
 async function renderPublicPage() {
@@ -76,13 +93,22 @@ async function renderPublicPage() {
   }
 
   const response = await client.getPublicJar(state.jarId)
-  const jar = response.jar
+  const jar = response?.jar
+  if (!jar) {
+    throw new Error('Tip jar not found.')
+  }
   state.jar = jar
   const tips = response.tips || []
   const isOnchain = jar.paymentMethod === 'onchain'
+  const jarCurrency = jar.currency || 'sat'
 
+  if (Array.isArray(response.currencies)) {
+    state.currencies = [...new Set(['sat', jarCurrency, ...response.currencies])]
+  } else {
+    await fetchCurrencies(jarCurrency)
+  }
   setInvoiceFormVisible(!isOnchain)
-  setCurrencyOptions(jar.currency || 'sat')
+  setCurrencyOptions(jarCurrency)
   setDefaultAmount(jar)
 
   publicPage.innerHTML = ''
@@ -105,10 +131,12 @@ async function renderPublicPage() {
     for (const amount of jar.suggestedAmounts || []) {
       const chip = document.createElement('span')
       chip.className = 'amount-chip'
-      chip.textContent = `${amount} ${currencyLabel(jar.currency || 'sat')}`
+      chip.textContent = `${amount} ${currencyLabel(jarCurrency)}`
       chip.addEventListener('click', () => {
-        tipForm.elements.amount.value = amount
-        tipForm.elements.currency.value = jar.currency || 'sat'
+        const amountInput = formField('amount')
+        const currencySelect = formField('currency')
+        if (amountInput) amountInput.value = amount
+        if (currencySelect) currencySelect.value = jarCurrency
       })
       amounts.append(chip)
     }
@@ -125,22 +153,29 @@ async function renderPublicPage() {
 }
 
 function setDefaultAmount(jar) {
-  const amountInput = tipForm.elements.amount
-  if (!amountInput) return
-  const suggestedAmounts = Array.isArray(jar.suggestedAmounts)
+  const amountInput = formField('amount')
+  if (!amountInput) {
+    logFailure('Amount input is missing.')
+    return
+  }
+  const suggestedAmounts = Array.isArray(jar?.suggestedAmounts)
     ? jar.suggestedAmounts
     : []
+  const currency = jar?.currency || 'sat'
   amountInput.value =
     suggestedAmounts.length > 0
       ? suggestedAmounts[0]
-      : jar.currency === 'sat'
+      : currency === 'sat'
         ? 500
         : 5
 }
 
 function setCurrencyOptions(defaultCurrency) {
-  const select = tipForm.elements.currency
-  if (!select) return
+  const select = formField('currency')
+  if (!select) {
+    logFailure('Currency select is missing.', {defaultCurrency})
+    return
+  }
   select.innerHTML = ''
   for (const currency of state.currencies) {
     const option = document.createElement('option')
@@ -184,7 +219,9 @@ function onchainAddressPanel(address) {
   copyButton.type = 'button'
   copyButton.textContent = 'Copy Address'
   copyButton.addEventListener('click', () => {
-    navigator.clipboard?.writeText(address).catch(() => {})
+    navigator.clipboard?.writeText(address).catch(error => {
+      logFailure('Failed to copy onchain address.', {error})
+    })
   })
 
   container.append(qr, label, addressText, copyButton)
@@ -326,7 +363,18 @@ function fieldValue(container, name) {
   return String(container.querySelector(`[name="${name}"]`)?.value || '')
 }
 
+function formField(name) {
+  return tipForm?.querySelector(`[name="${name}"]`) || null
+}
+
 function showError(error) {
   const message = error instanceof Error ? error.message : String(error)
-  client.notifyError(message).catch(() => {})
+  logFailure('Public page error.', {message, error})
+  client.notifyError(message).catch(notifyError => {
+    logFailure('Failed to notify public page error.', {notifyError})
+  })
+}
+
+function logFailure(message, details = {}) {
+  console.error('[tips public]', message, details)
 }

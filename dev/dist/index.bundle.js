@@ -535,7 +535,7 @@ export function getBitcoinRate(_requestJson) {
 
 export function listTipCurrencies(_requestJson) {
   return runJson(() => {
-    return {currencies: utils.currencies.list()}
+    return {currencies: safeCurrencies()}
   })
 }
 
@@ -544,7 +544,11 @@ export function getPublicTipJar(requestJson) {
     const request = parseJsonObject(requestJson)
     const jarId = requiredText(request.jarId, 'jarId', 128)
     const jar = getPublicJar(jarId)
-    return {jar: publicJar(jar), tips: []}
+    return {
+      jar: publicJar(jar),
+      tips: [],
+      currencies: safeCurrencies(jar.currency)
+    }
   })
 }
 
@@ -854,6 +858,15 @@ function normalizeCurrency(value) {
     throw new Error('currency is not supported.')
   }
   return normalized
+}
+
+function safeCurrencies(defaultCurrency = 'sat') {
+  const fallback = ['sat', defaultCurrency].filter(Boolean)
+  try {
+    return [...new Set([...fallback, ...utils.currencies.list()])]
+  } catch (_error) {
+    return [...new Set(fallback)]
+  }
 }
 
 function normalizePageSize(value) {

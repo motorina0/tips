@@ -197,7 +197,8 @@ async function copyPublicUrl(url) {
   try {
     await navigator.clipboard.writeText(url)
     showResult({copied: true, publicUrl: url})
-  } catch (_error) {
+  } catch (error) {
+    logFailure('Failed to copy public jar URL.', {url, error})
     showResult({publicUrl: url})
   }
 }
@@ -208,6 +209,13 @@ function showResult(value) {
 
 function showError(error) {
   const message = error instanceof Error ? error.message : String(error)
+  logFailure('Page error.', {message, error})
   result.textContent = JSON.stringify({error: message}, null, 2)
-  client.notifyError(message).catch(() => {})
+  client.notifyError(message).catch(notifyError => {
+    logFailure('Failed to notify page error.', {notifyError})
+  })
+}
+
+function logFailure(message, details = {}) {
+  console.error('[tips app]', message, details)
 }
