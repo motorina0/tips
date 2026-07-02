@@ -589,89 +589,95 @@ const app = Vue.createApp({
                   },
                   {
                     default: () => [
-                      formInput('title', {
-                        label: 'Title',
-                        maxlength: 80
-                      }),
-                      formInput('description', {
-                        label: 'Description',
-                        type: 'textarea',
-                        maxlength: 280
-                      }),
-                      h('div', {class: 'row q-gutter-sm'}, [
-                        h(QRadio, {
-                          modelValue: this.form.paymentMethod,
-                          'onUpdate:modelValue': value => {
-                            this.form.paymentMethod = value
-                          },
-                          dark: true,
-                          dense: true,
-                          val: 'lightning',
-                          label: 'Lightning'
-                        }),
-                        h(QRadio, {
-                          modelValue: this.form.paymentMethod,
-                          'onUpdate:modelValue': value => {
-                            this.form.paymentMethod = value
-                          },
-                          dark: true,
-                          dense: true,
-                          val: 'onchain',
-                          label: 'Onchain'
-                        })
-                      ]),
-                      this.form.paymentMethod === 'onchain'
-                        ? h(QSelect, {
-                            modelValue: this.form.watchonlyWalletId,
-                            'onUpdate:modelValue': value => {
-                              this.form.watchonlyWalletId = value
-                            },
-                            dark: true,
-                            filled: true,
-                            dense: true,
-                            emitValue: true,
-                            mapOptions: true,
-                            label: 'Onchain account',
-                            options: this.watchonlyWalletOptions,
-                            loading: this.watchonlyWalletsLoading,
-                            disable:
-                              this.watchonlyWalletsLoading ||
-                              !this.watchonlyWalletOptions.length
-                          })
-                        : h(QSelect, {
-                            modelValue: this.form.walletId,
-                            'onUpdate:modelValue': value => {
-                              this.form.walletId = value
-                            },
-                            dark: true,
-                            filled: true,
-                            dense: true,
-                            emitValue: true,
-                            mapOptions: true,
-                            label: 'Wallet',
-                            options: this.walletOptions,
-                            disable: !this.walletOptions.length
+                      h('div', {class: 'row q-col-gutter-md'}, [
+                        h('div', {class: 'col-12 col-md-6 q-gutter-md'}, [
+                          formInput('title', {
+                            label: 'Title',
+                            maxlength: 80
                           }),
-                      h(QSelect, {
-                        modelValue: this.form.currency,
-                        'onUpdate:modelValue': value => {
-                          this.form.currency = value || 'sat'
-                        },
-                        dark: true,
-                        filled: true,
-                        dense: true,
-                        emitValue: true,
-                        mapOptions: true,
-                        label: 'Currency',
-                        options: this.currencyOptions
-                      }),
-                      formInput('suggestedAmounts', {
-                        label: `Suggested amounts (${this.form.currency === 'sat' ? 'sats' : this.form.currency})`
-                      }),
-                      formInput('thankYouMessage', {
-                        label: 'Thank you message',
-                        maxlength: 160
-                      }),
+                          formInput('description', {
+                            label: 'Description',
+                            type: 'textarea',
+                            maxlength: 280
+                          }),
+                          formInput('thankYouMessage', {
+                            label: 'Thank you message',
+                            maxlength: 160
+                          })
+                        ]),
+                        h('div', {class: 'col-12 col-md-6 q-gutter-md'}, [
+                          h('div', {class: 'row q-gutter-sm'}, [
+                            h(QRadio, {
+                              modelValue: this.form.paymentMethod,
+                              'onUpdate:modelValue': value => {
+                                this.form.paymentMethod = value
+                              },
+                              dark: true,
+                              dense: true,
+                              val: 'lightning',
+                              label: 'Lightning'
+                            }),
+                            h(QRadio, {
+                              modelValue: this.form.paymentMethod,
+                              'onUpdate:modelValue': value => {
+                                this.form.paymentMethod = value
+                              },
+                              dark: true,
+                              dense: true,
+                              val: 'onchain',
+                              label: 'Onchain'
+                            })
+                          ]),
+                          this.form.paymentMethod === 'onchain'
+                            ? h(QSelect, {
+                                modelValue: this.form.watchonlyWalletId,
+                                'onUpdate:modelValue': value => {
+                                  this.form.watchonlyWalletId = value
+                                },
+                                dark: true,
+                                filled: true,
+                                dense: true,
+                                emitValue: true,
+                                mapOptions: true,
+                                label: 'Onchain account',
+                                options: this.watchonlyWalletOptions,
+                                loading: this.watchonlyWalletsLoading,
+                                disable:
+                                  this.watchonlyWalletsLoading ||
+                                  !this.watchonlyWalletOptions.length
+                              })
+                            : h(QSelect, {
+                                modelValue: this.form.walletId,
+                                'onUpdate:modelValue': value => {
+                                  this.form.walletId = value
+                                },
+                                dark: true,
+                                filled: true,
+                                dense: true,
+                                emitValue: true,
+                                mapOptions: true,
+                                label: 'Wallet',
+                                options: this.walletOptions,
+                                disable: !this.walletOptions.length
+                              }),
+                          h(QSelect, {
+                            modelValue: this.form.currency,
+                            'onUpdate:modelValue': value => {
+                              this.form.currency = value || 'sat'
+                            },
+                            dark: true,
+                            filled: true,
+                            dense: true,
+                            emitValue: true,
+                            mapOptions: true,
+                            label: 'Currency',
+                            options: this.currencyOptions
+                          }),
+                          formInput('suggestedAmounts', {
+                            label: `Suggested amounts (${this.form.currency === 'sat' ? 'sats' : this.form.currency})`
+                          })
+                        ])
+                      ]),
                       h(
                         QBtn,
                         {
