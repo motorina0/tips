@@ -11,22 +11,26 @@ import {
   storageGet,
   storageGetPublic,
   storageGetPaginated,
-  storageSet,
-  utilsCurrenciesConvert,
-  utilsCurrenciesFiatToSats,
-  utilsCurrenciesList,
-  utilsCurrenciesRate,
-  utilsCurrenciesSatsToFiat,
-  utilsLightningDecodeInvoice,
-  utilsLightningInvoiceAmountMsat,
-  utilsLightningInvoiceExpiry,
-  utilsLightningInvoiceMemo,
-  utilsLightningInvoicePaymentHash,
-  utilsLightningRandomSecretAndHash,
-  utilsLightningValidateInvoice,
-  utilsLightningVerifyPreimage,
-  utilsServerHealth
+  storageSet
 } from 'lnbits:extension/host'
+import {
+  convert as utilsCurrenciesConvert,
+  fiatToSats as utilsCurrenciesFiatToSats,
+  listCurrencies as utilsCurrenciesList,
+  rate as utilsCurrenciesRate,
+  satsToFiat as utilsCurrenciesSatsToFiat
+} from 'lnbits:extension/utils-currencies'
+import {
+  decodeInvoice as utilsLightningDecodeInvoice,
+  invoiceAmountMsat as utilsLightningInvoiceAmountMsat,
+  invoiceExpiry as utilsLightningInvoiceExpiry,
+  invoiceMemo as utilsLightningInvoiceMemo,
+  invoicePaymentHash as utilsLightningInvoicePaymentHash,
+  randomSecretAndHash as utilsLightningRandomSecretAndHash,
+  validateInvoice as utilsLightningValidateInvoice,
+  verifyPreimage as utilsLightningVerifyPreimage
+} from 'lnbits:extension/utils-lightning'
+import {health as utilsServerHealth} from 'lnbits:extension/utils-server'
 
 const extensionApi = {
   storage: {

@@ -97,6 +97,43 @@ interface host {
     body: option<string>
   }
 
+  record random-id-request {
+    prefix: string
+  }
+
+  record random-id-response {
+    id: string
+  }
+
+  record now-response {
+    timestamp: u64
+  }
+
+  record log-request {
+    level: string,
+    message: string
+  }
+
+  record log-response {
+    ok: bool
+  }
+
+  storage-get: func(request: storage-get-request) -> storage-get-response;
+  storage-get-public: func(request: storage-get-request) -> storage-get-response;
+  storage-set: func(request: storage-set-request) -> storage-set-response;
+  storage-get-paginated: func(request: storage-paginated-request) -> storage-paginated-response;
+  storage-delete: func(request: storage-delete-request) -> storage-delete-response;
+  create-invoice: func(request: invoice-request) -> invoice-response;
+  create-invoice-public: func(request: invoice-public-request) -> invoice-response;
+  list-user-wallets: func() -> list-user-wallets-response;
+  http-request: func(request: http-request-options) -> http-response-data;
+  extension-api-request: func(request: extension-api-request-options) -> http-response-data;
+  random-id: func(request: random-id-request) -> random-id-response;
+  now: func() -> now-response;
+  log: func(request: log-request) -> log-response;
+}
+
+interface utils-currencies {
   record currency-list-response {
     currencies: list<string>
   }
@@ -138,11 +175,23 @@ interface host {
     amount: f64
   }
 
+  list-currencies: func() -> currency-list-response;
+  rate: func(request: currency-rate-request) -> currency-rate-response;
+  convert: func(request: currency-convert-request) -> currency-convert-response;
+  fiat-to-sats: func(request: fiat-to-sats-request) -> fiat-to-sats-response;
+  sats-to-fiat: func(request: sats-to-fiat-request) -> sats-to-fiat-response;
+}
+
+interface utils-server {
   record server-health-response {
     server-time: u64,
     up-time: string
   }
 
+  health: func() -> server-health-response;
+}
+
+interface utils-lightning {
   record bolt11-request {
     bolt11: string
   }
@@ -195,58 +244,21 @@ interface host {
     hash: string
   }
 
-  record random-id-request {
-    prefix: string
-  }
-
-  record random-id-response {
-    id: string
-  }
-
-  record now-response {
-    timestamp: u64
-  }
-
-  record log-request {
-    level: string,
-    message: string
-  }
-
-  record log-response {
-    ok: bool
-  }
-
-  storage-get: func(request: storage-get-request) -> storage-get-response;
-  storage-get-public: func(request: storage-get-request) -> storage-get-response;
-  storage-set: func(request: storage-set-request) -> storage-set-response;
-  storage-get-paginated: func(request: storage-paginated-request) -> storage-paginated-response;
-  storage-delete: func(request: storage-delete-request) -> storage-delete-response;
-  create-invoice: func(request: invoice-request) -> invoice-response;
-  create-invoice-public: func(request: invoice-public-request) -> invoice-response;
-  list-user-wallets: func() -> list-user-wallets-response;
-  http-request: func(request: http-request-options) -> http-response-data;
-  extension-api-request: func(request: extension-api-request-options) -> http-response-data;
-  utils-currencies-list: func() -> currency-list-response;
-  utils-currencies-rate: func(request: currency-rate-request) -> currency-rate-response;
-  utils-currencies-convert: func(request: currency-convert-request) -> currency-convert-response;
-  utils-currencies-fiat-to-sats: func(request: fiat-to-sats-request) -> fiat-to-sats-response;
-  utils-currencies-sats-to-fiat: func(request: sats-to-fiat-request) -> sats-to-fiat-response;
-  utils-server-health: func() -> server-health-response;
-  utils-lightning-decode-invoice: func(request: bolt11-request) -> decode-invoice-response;
-  utils-lightning-validate-invoice: func(request: bolt11-request) -> validate-invoice-response;
-  utils-lightning-invoice-payment-hash: func(request: bolt11-request) -> invoice-payment-hash-response;
-  utils-lightning-invoice-amount-msat: func(request: bolt11-request) -> invoice-amount-msat-response;
-  utils-lightning-invoice-expiry: func(request: bolt11-request) -> invoice-expiry-response;
-  utils-lightning-invoice-memo: func(request: bolt11-request) -> invoice-memo-response;
-  utils-lightning-verify-preimage: func(request: verify-preimage-request) -> verify-preimage-response;
-  utils-lightning-random-secret-and-hash: func(request: random-secret-and-hash-request) -> random-secret-and-hash-response;
-  random-id: func(request: random-id-request) -> random-id-response;
-  now: func() -> now-response;
-  log: func(request: log-request) -> log-response;
+  decode-invoice: func(request: bolt11-request) -> decode-invoice-response;
+  validate-invoice: func(request: bolt11-request) -> validate-invoice-response;
+  invoice-payment-hash: func(request: bolt11-request) -> invoice-payment-hash-response;
+  invoice-amount-msat: func(request: bolt11-request) -> invoice-amount-msat-response;
+  invoice-expiry: func(request: bolt11-request) -> invoice-expiry-response;
+  invoice-memo: func(request: bolt11-request) -> invoice-memo-response;
+  verify-preimage: func(request: verify-preimage-request) -> verify-preimage-response;
+  random-secret-and-hash: func(request: random-secret-and-hash-request) -> random-secret-and-hash-response;
 }
 
 world tips {
   import host;
+  import utils-currencies;
+  import utils-server;
+  import utils-lightning;
 
   export create-tip-jar: func(request-json: string) -> string;
   export list-tip-jars: func(request-json: string) -> string;
