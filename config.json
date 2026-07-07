@@ -206,8 +206,12 @@
       "label": "Create tip invoices",
       "description": "Create incoming Lightning invoices for selected wallets.",
       "policy": {
-        "table": "tip_jars",
-        "wallet_field": "wallet_id"
+        "policies": [
+          {
+            "table": "tip_jars",
+            "wallet_field": "wallet_id"
+          }
+        ]
       }
     },
     {
