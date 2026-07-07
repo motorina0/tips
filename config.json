@@ -19,6 +19,10 @@
         "visibility": "authenticated"
       },
       {
+        "name": "delete-tip-jar",
+        "visibility": "authenticated"
+      },
+      {
         "name": "list-tip-jar-tips",
         "visibility": "authenticated"
       },
@@ -95,6 +99,15 @@
       "path": "/jars",
       "export": "list-tip-jars",
       "auth": "user"
+    },
+    {
+      "method": "DELETE",
+      "path": "/jars/{jar_id}",
+      "export": "delete-tip-jar",
+      "auth": "user",
+      "path_params": {
+        "jar_id": "jarId"
+      }
     },
     {
       "method": "GET",

@@ -89,6 +89,27 @@ export function listTipJars(requestJson) {
   })
 }
 
+export function deleteTipJar(requestJson) {
+  return runJson(() => {
+    const request = parseJsonObject(requestJson)
+    const jarId = requiredText(request.jarId, 'jarId', 128)
+    const jar = getJar(jarId)
+    const paidTips = storage.getPaginated(TIPS_TABLE, {
+      filters: {jar_id: jarId, paid: true},
+      limit: 1,
+      offset: 0
+    })
+
+    if (paidTips.total > 0) {
+      throw new Error('Tip jars with paid tips cannot be deleted.')
+    }
+
+    storage.delete(JARS_TABLE, jarId)
+    system.log(`tips: deleted jar ${jarId}`)
+    return {id: jar.id, deleted: true}
+  })
+}
+
 export function listTipJarTips(requestJson) {
   return runJson(() => {
     const request = parseJsonObject(requestJson)

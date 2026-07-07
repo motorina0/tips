@@ -22,8 +22,16 @@ const app = Vue.createApp({
         error: ''
       },
       jars: [],
+      deletingJarId: null,
       jarsTable: {
         columns: [
+          {
+            name: 'delete',
+            align: 'left',
+            label: '',
+            field: 'id',
+            sortable: false
+          },
           {
             name: 'title',
             align: 'left',
@@ -347,6 +355,43 @@ const app = Vue.createApp({
     searchJars() {
       this.jarsTable.pagination.page = 1
       this.fetchJars()
+    },
+
+    confirmDeleteJar(jar) {
+      Quasar.Dialog.create({
+        dark: true,
+        title: 'Delete tip jar?',
+        message: `Delete "${jar.title}"? Only the jar row will be deleted. Existing tips are kept.`,
+        cancel: true,
+        persistent: true,
+        ok: {
+          label: 'Delete',
+          color: 'negative',
+          unelevated: true
+        }
+      }).onOk(() => {
+        this.deleteJar(jar)
+      })
+    },
+
+    async deleteJar(jar) {
+      this.deletingJarId = jar.id
+      try {
+        await client.deleteJar(jar.id)
+        if (this.selectedJar?.id === jar.id) {
+          this.selectedJar = null
+          this.tips = []
+          this.tipsTable.pagination = {
+            ...this.tipsTable.pagination,
+            rowsNumber: 0
+          }
+        }
+        await this.fetchJars({pagination: this.jarsTable.pagination})
+      } catch (error) {
+        this.showError(error)
+      } finally {
+        this.deletingJarId = null
+      }
     },
 
     async selectJar(jar) {
@@ -762,6 +807,41 @@ const app = Vue.createApp({
                         ]
                       ),
 
+                    'body-cell-delete': props =>
+                      h(
+                        QTd,
+                        {props},
+                        {
+                          default: () =>
+                            h(
+                              QBtn,
+                              {
+                                flat: true,
+                                dense: true,
+                                round: true,
+                                color: 'negative',
+                                icon: 'delete',
+                                loading: this.deletingJarId === props.row.id,
+                                onClick: event => {
+                                  event.stopPropagation()
+                                  this.confirmDeleteJar(props.row)
+                                }
+                              },
+                              {
+                                default: () => [
+                                  h(
+                                    QTooltip,
+                                    {},
+                                    {
+                                      default: () => 'Delete jar'
+                                    }
+                                  )
+                                ]
+                              }
+                            )
+                        }
+                      ),
+
                     'body-cell-publicUrl': props =>
                       h(
                         QTd,
@@ -792,10 +872,12 @@ const app = Vue.createApp({
                                 dense: true,
                                 round: true,
                                 icon: 'content_copy',
-                                onClick: () =>
+                                onClick: event => {
+                                  event.stopPropagation()
                                   this.copyPublicUrl(
                                     this.publicJarUrl(props.row.id)
                                   )
+                                }
                               },
                               {
                                 default: () => [

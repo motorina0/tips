@@ -48,6 +48,12 @@
         )
       },
 
+      deleteJar(jarId) {
+        return request(`${baseUrl}/jars/${encodeURIComponent(jarId)}`, {
+          method: 'DELETE'
+        })
+      },
+
       listWallets() {
         return request(`${baseUrl}/wallets`)
       },
