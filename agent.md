@@ -241,7 +241,8 @@ Common permissions:
   storage sources.
 - `wallet.pay_invoice`: pay invoices from user-owned wallets.
 - `extension.api.request`: call allow-listed installed extension APIs.
-- `http.request`: call allow-listed external HTTPS origins.
+- `http.request`: call allow-listed external HTTPS origins from authenticated
+  WASM exports.
 - `utils.basic`: use common LNbits utility helpers.
 - `ui.camera.scan_qr`: request camera scanning through the parent UI bridge.
 
@@ -292,7 +293,7 @@ Policy examples:
   "description": "Call an allow-listed external HTTPS origin.",
   "policies": [
     {
-      "hosts": ["https://api.example.com"]
+      "host": "https://api.example.com"
     }
   ]
 }
@@ -300,6 +301,26 @@ Policy examples:
 
 Do not add a permission unless the extension actually calls the matching host
 API.
+
+For `http.request`, each policy entry must be either an HTTPS origin string or
+an object with a `host` field. The host policy is origin-based, so a policy for
+`https://api.example.com` allows requests to that origin, not arbitrary hosts.
+
+Outbound HTTP constraints:
+
+- URLs must use `https`.
+- URL credentials are rejected.
+- Localhost and internal/private network addresses are rejected.
+- Redirects are not followed.
+- Request bodies are capped at 65,536 bytes.
+- Response bodies are capped at 262,144 bytes.
+- Timeout is 10 seconds.
+- Hop-by-hop and sensitive headers such as `cookie`, `host`, `content-length`,
+  and `set-cookie` are stripped.
+
+Use `http.request` only for small server-side API calls that are safe to proxy
+through the WASM host. Browser UI should still use the sandbox bridge for
+extension API calls.
 
 ## Payment Flows
 
