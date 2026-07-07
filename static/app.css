@@ -168,6 +168,21 @@ button[aria-busy='true'] .button-spinner {
   color: #bdbdbd;
 }
 
+.bitcoin-external-rates {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.external-rate-line {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 6px;
+  row-gap: 2px;
+}
+
 .amount-row {
   display: flex;
   flex-wrap: wrap;

@@ -408,6 +408,16 @@ const system = {
 
 const JARS_TABLE = 'tip_jars'
 const TIPS_TABLE = 'tips'
+const MEMPOOL_PRICES_URL = 'https://mempool.space/api/v1/prices'
+const MEMPOOL_RATE_CURRENCIES = [
+  {currency: 'USD', flag: '🇺🇸'},
+  {currency: 'EUR', flag: '🇪🇺'},
+  {currency: 'GBP', flag: '🇬🇧'},
+  {currency: 'CAD', flag: '🇨🇦'},
+  {currency: 'CHF', flag: '🇨🇭'},
+  {currency: 'AUD', flag: '🇦🇺'},
+  {currency: 'JPY', flag: '🇯🇵'}
+]
 const JAR_SEARCH_FIELDS = [
   'title',
   'description',
@@ -747,6 +757,8 @@ function bitcoinUsdRate() {
     throw new Error('LNbits returned an invalid Bitcoin price.')
   }
 
+  const external = safeMempoolBitcoinRates()
+
   return {
     source: 'LNbits',
     currency: 'USD',
@@ -754,8 +766,52 @@ function bitcoinUsdRate() {
     satsPerUsd: Math.round(Number(rate) || 0),
     sampleAmountSat: 1000,
     sampleAmountUsd: satsToUsd(1000, btcUsd),
-    fetchedAt: system.now()
+    fetchedAt: system.now(),
+    externalRates: external.rates,
+    externalRateError: external.error,
+    externalRateSource: 'mempool.space'
   }
+}
+
+function safeMempoolBitcoinRates() {
+  try {
+    return {rates: mempoolBitcoinRates(), error: ''}
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    system.log(`tips: mempool rate unavailable: ${message}`, 'warning')
+    return {rates: [], error: message}
+  }
+}
+
+function mempoolBitcoinRates() {
+  const response = http.request({
+    method: 'GET',
+    url: MEMPOOL_PRICES_URL
+  })
+
+  if (response.statusCode !== 200) {
+    throw new Error(`mempool.space returned HTTP ${response.statusCode}.`)
+  }
+
+  const data = parseJsonObject(response.body)
+  const fetchedAt = normalizeTimestamp(data.time) || system.now()
+  return MEMPOOL_RATE_CURRENCIES.map(({currency, flag}) => {
+    const price = Number(data[currency])
+    if (!Number.isFinite(price) || price <= 0) return null
+    return {
+      source: 'mempool.space',
+      currency,
+      flag,
+      price,
+      fetchedAt
+    }
+  }).filter(Boolean)
+}
+
+function normalizeTimestamp(value) {
+  const timestamp = Number(value)
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return 0
+  return Math.trunc(timestamp)
 }
 
 function listWatchonlyWallets() {

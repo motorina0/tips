@@ -195,6 +195,15 @@
       "description": "Use LNbits currency conversion and Lightning invoice utility functions."
     },
     {
+      "id": "http.request",
+      "description": "Fetch external Bitcoin exchange rates from mempool.space.",
+      "policies": [
+        {
+          "host": "https://mempool.space"
+        }
+      ]
+    },
+    {
       "id": "extension.api.request",
       "description": "Read Watchonly accounts and create receive addresses for onchain tip jars.",
       "policies": [

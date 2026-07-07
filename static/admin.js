@@ -473,6 +473,14 @@ const app = Vue.createApp({
         currency: 'USD',
         maximumFractionDigits: amount >= 1 ? 2 : 4
       }).format(amount)
+    },
+
+    formatFiatPrice(value) {
+      const amount = Number(value)
+      if (!Number.isFinite(amount)) return '-'
+      return new Intl.NumberFormat('en-US', {
+        maximumFractionDigits: amount >= 100 ? 0 : 2
+      }).format(amount)
     }
   },
 
@@ -566,43 +574,109 @@ const app = Vue.createApp({
                   )
                 ]),
                 this.bitcoinRate.data
-                  ? h('div', {class: 'row q-col-gutter-md'}, [
-                      h('div', {class: 'col-12 col-sm-4'}, [
-                        h(
-                          'div',
-                          {class: 'text-caption text-grey-5'},
-                          'Source'
-                        ),
-                        h(
-                          'div',
-                          {class: 'text-subtitle1 text-weight-medium'},
-                          this.bitcoinRate.data.source || 'External rate'
-                        )
+                  ? h('div', [
+                      h('div', {class: 'row q-col-gutter-md'}, [
+                        h('div', {class: 'col-12 col-sm-4'}, [
+                          h(
+                            'div',
+                            {class: 'text-caption text-grey-5'},
+                            'Source'
+                          ),
+                          h(
+                            'div',
+                            {class: 'text-subtitle1 text-weight-medium'},
+                            this.bitcoinRate.data.source || 'External rate'
+                          )
+                        ]),
+                        h('div', {class: 'col-12 col-sm-4'}, [
+                          h(
+                            'div',
+                            {class: 'text-caption text-grey-5'},
+                            'BTC/USD'
+                          ),
+                          h(
+                            'div',
+                            {class: 'text-subtitle1 text-weight-medium'},
+                            this.formatUsd(this.bitcoinRate.data.btcUsd)
+                          )
+                        ]),
+                        h('div', {class: 'col-12 col-sm-4'}, [
+                          h(
+                            'div',
+                            {class: 'text-caption text-grey-5'},
+                            '1,000 sats'
+                          ),
+                          h(
+                            'div',
+                            {class: 'text-subtitle1 text-weight-medium'},
+                            this.formatUsd(this.bitcoinRate.data.sampleAmountUsd)
+                          )
+                        ])
                       ]),
-                      h('div', {class: 'col-12 col-sm-4'}, [
-                        h(
-                          'div',
-                          {class: 'text-caption text-grey-5'},
-                          'BTC/USD'
-                        ),
-                        h(
-                          'div',
-                          {class: 'text-subtitle1 text-weight-medium'},
-                          this.formatUsd(this.bitcoinRate.data.btcUsd)
-                        )
-                      ]),
-                      h('div', {class: 'col-12 col-sm-4'}, [
-                        h(
-                          'div',
-                          {class: 'text-caption text-grey-5'},
-                          '1,000 sats'
-                        ),
-                        h(
-                          'div',
-                          {class: 'text-subtitle1 text-weight-medium'},
-                          this.formatUsd(this.bitcoinRate.data.sampleAmountUsd)
-                        )
-                      ])
+                      h(
+                        'div',
+                        {class: 'bitcoin-external-rates'},
+                        [
+                          h(
+                            'div',
+                            {class: 'text-caption text-grey-5 q-mb-sm'},
+                            this.bitcoinRate.data.externalRateSource ||
+                              'External rates'
+                          ),
+                          Array.isArray(this.bitcoinRate.data.externalRates) &&
+                          this.bitcoinRate.data.externalRates.length
+                            ? h(
+                                'div',
+                                {class: 'row q-col-gutter-sm'},
+                                this.bitcoinRate.data.externalRates.map(rate =>
+                                  h(
+                                    'div',
+                                    {
+                                      key: rate.currency,
+                                      class: 'col-6 col-sm-4 col-md-3'
+                                    },
+                                    [
+                                      h(
+                                        'div',
+                                        {
+                                          class: 'external-rate-line'
+                                        },
+                                        [
+                                          h(
+                                            'span',
+                                            {class: 'text-subtitle1'},
+                                            rate.flag || ''
+                                          ),
+                                          h(
+                                            'span',
+                                            {
+                                              class:
+                                                'text-caption text-grey-5 text-weight-medium'
+                                            },
+                                            rate.currency
+                                          ),
+                                          h(
+                                            'span',
+                                            {
+                                              class:
+                                                'text-subtitle2 text-weight-medium'
+                                            },
+                                            this.formatFiatPrice(rate.price)
+                                          )
+                                        ]
+                                      )
+                                    ]
+                                  )
+                                )
+                              )
+                            : h(
+                                'p',
+                                {class: 'muted q-my-none'},
+                                this.bitcoinRate.data.externalRateError ||
+                                  'External rate unavailable.'
+                              )
+                        ]
+                      )
                     ])
                   : h(
                       'p',
