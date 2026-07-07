@@ -1,28 +1,8 @@
 # LNbits WASM Extension Agent Guide
 
-This file explains the structure of the current LNbits WASM extension examples
-so another AI agent can use them as references for building new extensions.
-
-Reference extensions:
-
-- `lnbits/extensions/tips`: JavaScript-authored WASM extension with public pages,
-  public invoice creation, storage policies, event handling, and calls to another
-  extension.
-- `lnbits/extensions/bigpayment`: Rust-authored WASM extension with authenticated
-  pages only, wallet balance reads, invoice parsing, invoice creation, and paying
-  invoices.
-
-## Extension Purposes
-
-Tips lets an authenticated LNbits user create public tip jars. Public visitors
-can open a jar page, create a Lightning invoice, and leave a name/message. When
-the invoice is paid, LNbits calls the extension event export so the extension can
-record the paid tip.
-
-BigPayment helps an authenticated LNbits user pay a large Lightning invoice when
-no single wallet has enough funds. It reads wallet balances, lets the user choose
-source wallets and a collector wallet, moves funds into the collector wallet, and
-pays the target invoice.
+This guide describes the expected structure of an LNbits WASM extension so AI
+agents can create, review, or modify extensions without relying on a specific
+example implementation.
 
 ## Directory Structure
 
@@ -50,7 +30,7 @@ dev/
   scripts/
   src/
     index.js or lib.rs
-    lnbits-sdk.js for JS extensions
+    lnbits-sdk.js for JavaScript components
 ```
 
 Core runtime files:
@@ -66,15 +46,13 @@ Core runtime files:
 
 Development files:
 
-- Tips:
-  - `dev/src/index.js`: JavaScript source for the WASM exports.
-  - `dev/src/lnbits-sdk.js`: small JS wrapper around LNbits host functions.
-  - `dev/package.json`: build/check commands.
-  - `dev/dist/*`: generated bundle input for `jco`.
-- BigPayment:
-  - `dev/src/lib.rs`: Rust source for the WASM exports.
-  - `dev/Cargo.toml`: Rust dependencies and component metadata.
-  - `dev/Cargo.lock`: locked Rust dependency versions.
+- JavaScript components usually keep WASM source in `dev/src/index.js`, host
+  wrappers in `dev/src/lnbits-sdk.js`, and build/check commands in
+  `dev/package.json`.
+- Rust components usually keep WASM source in `dev/src/lib.rs` and component
+  metadata/dependencies in `dev/Cargo.toml`.
+- Generated build output under `dev/dist/` or language build directories should
+  only be edited by the build tool.
 
 ## Config Contract
 
@@ -94,13 +72,16 @@ Required high-level fields:
 - `api_routes`: REST-like routes served under `/api/v1/ext/{id}/...`.
 - `permissions`: capabilities requested at install time.
 
-Optional fields used by this extension:
+Common optional fields:
 
 - `events.onInvoicePaid`: export to call when an invoice for this extension is
-  paid. Tips uses this; BigPayment does not.
+  paid.
+- `wasm.resource_limits.max_response_bytes`: maximum serialized WASM response
+  size.
 
-Do not add build-only metadata to `config.json`. Build commands belong in
-`dev/package.json` or project docs, not in the deployed runtime config.
+Do not put build-only metadata in the deployed runtime contract unless a
+separate tool explicitly consumes it. Prefer build commands in
+`dev/package.json`, `Cargo.toml`, a Makefile, or project docs.
 
 ## WASM Exports
 
@@ -113,37 +94,35 @@ Visibility values:
 - `public`: callable from public extension pages.
 - `event`: callable by LNbits background/event dispatch.
 
-The Tips JS source follows this shape:
+JavaScript exports should follow this shape:
 
 ```js
 export function someExport(requestJson) {
   return runJson(() => {
     const request = parseJsonObject(requestJson)
-    return {ok: true}
+    return {ok: true, data: {}}
   })
 }
 ```
 
-The extension returns JSON strings. Use `runJson()` so errors are converted into
-consistent `{ok: false, error}` responses.
-
-The BigPayment Rust source follows this shape:
+Rust exports should follow this shape:
 
 ```rust
-impl Guest for BigPayment {
-    fn list_wallets(request_json: String) -> String {
+impl Guest for Component {
+    fn some_export(request_json: String) -> String {
         run_json(|| {
             let request: SomeRequest = parse_request(&request_json)?;
-            Ok(json!({"ok": true}))
+            Ok(json!({"ok": true, "data": {}}))
         })
     }
 }
 
-export!(BigPayment);
+export!(Component);
 ```
 
-Use `serde` request/response structs and a shared `run_json()` helper so every
-export returns a JSON string with the same `{ok, data, error}` shape.
+Every export should return a JSON string with a consistent `{ok, data, error}`
+shape. Use shared parsing and `run_json()` helpers so validation failures become
+safe, predictable responses.
 
 ## Routes
 
@@ -167,20 +146,21 @@ Example:
 ```json
 {
   "method": "GET",
-  "path": "/jars/{jar_id}",
-  "export": "get-public-tip-jar",
+  "path": "/items/{item_id}",
+  "export": "get-public-item",
   "auth": "public",
   "path_params": {
-    "jar_id": "jarId"
+    "item_id": "itemId"
   }
 }
 ```
 
-Do not rely on implicit name conversion. If a route contains `{jar_id}`, map it
+Do not rely on implicit name conversion. If a route contains `{item_id}`, map it
 explicitly.
 
-Tips has both authenticated and public routes. BigPayment has only
-authenticated routes.
+Only expose public routes for data and actions that are safe without an
+authenticated account. Keep wallet balance reads, outgoing payments, admin
+actions, and private storage behind `user` routes.
 
 ## Browser Runtime
 
@@ -189,31 +169,33 @@ APIs directly or rely on LNbits cookies.
 
 Browser flow:
 
-1. User opens an extension wrapper path such as `/ext/tips`,
-   `/ext/tips/jars/{jar_id}`, or `/ext/bigpayment`.
+1. User opens an extension wrapper path such as `/ext/{ext_id}`.
 2. LNbits serves a wrapper page.
-3. The wrapper loads the sandboxed iframe.
-4. The iframe uses `static/lnbits-extension-sdk.js`.
-5. The SDK talks to the wrapper through `postMessage`.
+3. The wrapper loads the sandboxed iframe entrypoint from `ui/`.
+4. The iframe loads browser assets from `/ext-assets/{ext_id}/...`.
+5. The frontend SDK talks to the wrapper through `postMessage`.
 6. The wrapper performs allowed API calls and sends responses back.
 
-Use the frontend SDK methods instead of raw `fetch()` where possible.
+Use the frontend SDK methods instead of raw `fetch()` where possible. Add direct
+browser API calls only when they work within the iframe sandbox and content
+security policy.
 
 ## WASM Host API
 
 The WASM module does not directly access LNbits internals. It imports host
-functions through `lnbits-extension.wit`, wrapped by `dev/src/lnbits-sdk.js`.
+functions through `lnbits-extension.wit`, wrapped by language-specific SDK code.
 
 Common host namespaces:
 
 - `storage`: read/write extension-owned storage.
-- `wallet`: list wallets and create invoices.
+- `wallet`: list wallets, inspect balances, create invoices, and pay invoices
+  when permission allows.
 - `extension`: call allowed APIs from other installed extensions.
 - `utils`: currency and Lightning helpers.
 - `system`: IDs, timestamps, and logs.
 
-The host enforces permissions and owner scoping. Do not store user ids in
-extension data; LNbits core owns hidden owner isolation.
+The host enforces permissions and owner scoping. Do not store LNbits user ids,
+access tokens, or owner ids in extension data; LNbits core owns isolation.
 
 ## Storage
 
@@ -226,61 +208,52 @@ Rules:
 - Use snake_case field names in storage rows.
 - Public data must be explicitly exposed through `ext.storage.read_public`.
 - Do not expose wallet ids or private operational fields through public fields.
-
-Tips uses:
-
-- `tip_jars`: jar metadata, wallet reference, payment method, public text.
-- `tips`: individual tip records and payment state.
-
-BigPayment uses:
-
-- `wallet_selections`: selected source wallets and collector wallet for the
-  authenticated user.
+- Do not write or query reserved internal owner fields.
 
 Storage is accessed from WASM through the SDK:
 
 ```js
-storage.set('tip_jars', jar)
-const jar = storage.get('tip_jars', jarId)
-const publicJar = storage.getPublic('tip_jars', jarId)
-const page = storage.getPaginated('tips', {filters: {jar_id: jarId}})
+storage.set('entity_table', entity)
+const entity = storage.get('entity_table', entityId)
+const publicEntity = storage.getPublic('entity_table', entityId)
+const page = storage.getPaginated('event_table', {
+  filters: {entity_id: entityId}
+})
 ```
+
+Use storage schemas as the source of truth. Reject unknown fields before storing
+records, and keep public response objects smaller than the configured WASM
+response limit.
 
 ## Permissions
 
 Permissions in `config.json` are shown to the installer and enforced by core.
 
-Tips currently uses:
+Common permissions:
 
-- `ext.storage.read`
-- `ext.storage.read_public`
-- `ext.storage.write`
-- `wallet.create_invoice`
-- `wallet.create_invoice_public`
-- `wallet.list`
-- `utils.basic`
-- `extension.api.request`
-
-BigPayment currently uses:
-
-- `wallet.list`
-- `wallet.balance.read`
-- `wallet.create_invoice`
-- `wallet.pay_invoice`
-- `ext.storage.read`
-- `ext.storage.write`
-- `utils.basic`
-- `ui.camera.scan_qr`
+- `ext.storage.read`: read authenticated extension storage.
+- `ext.storage.read_public`: read allow-listed public fields.
+- `ext.storage.write`: write extension storage.
+- `wallet.list`: list wallets for the authenticated user.
+- `wallet.balance.read`: read wallet balances for the authenticated user.
+- `wallet.create_invoice`: create invoices from authenticated context.
+- `wallet.create_invoice_public`: create invoices from configured public
+  storage sources.
+- `wallet.pay_invoice`: pay invoices from user-owned wallets.
+- `extension.api.request`: call allow-listed installed extension APIs.
+- `http.request`: call allow-listed external HTTPS origins.
+- `utils.basic`: use common LNbits utility helpers.
+- `ui.camera.scan_qr`: request camera scanning through the parent UI bridge.
 
 Policy examples:
 
 ```json
 {
   "id": "ext.storage.read_public",
-  "description": "Read public tip jar fields for public pages.",
+  "description": "Read public fields for public pages.",
   "policies": [
     {
-      "table_name": "tip_jars",
+      "table_name": "entity_table",
       "public_fields": ["id", "title", "description"]
     }
   ]
@@ -290,10 +263,10 @@ Policy examples:
 ```json
 {
   "id": "wallet.create_invoice_public",
-  "description": "Create incoming Lightning invoices for selected wallets.",
+  "description": "Create incoming Lightning invoices from public sources.",
   "policies": [
     {
-      "table": "tip_jars",
+      "table": "entity_table",
       "wallet_field": "wallet_id"
     }
   ]
@@ -303,11 +276,23 @@ Policy examples:
 ```json
 {
   "id": "extension.api.request",
-  "description": "Read Watchonly accounts and create receive addresses.",
+  "description": "Call an allow-listed installed extension API.",
   "policies": [
     {
-      "id": "watchonly",
+      "id": "{target_extension}",
       "access": ["read"]
+    }
+  ]
+}
+```
+
+```json
+{
+  "id": "http.request",
+  "description": "Call an allow-listed external HTTPS origin.",
+  "policies": [
+    {
+      "hosts": ["https://api.example.com"]
     }
   ]
 }
@@ -316,98 +301,91 @@ Policy examples:
 Do not add a permission unless the extension actually calls the matching host
 API.
 
-## Payment Flow
+## Payment Flows
 
-Public Lightning tip flow:
+Public invoice flow:
 
-1. Public page loads a jar using `storage.getPublic`.
-2. Public page posts to the extension invoice API route.
+1. Public page reads allow-listed source data with `storage.getPublic`.
+2. Public page calls a public extension API route.
 3. WASM calls `wallet.createInvoicePublic({sourceId, amount, currency, memo})`.
-4. LNbits core finds the source row by `sourceId`, reads the configured
-   `wallet_field`, and creates the invoice.
-5. When paid, LNbits dispatches `events.onInvoicePaid`.
-6. The extension event export records or marks the tip as paid.
+4. LNbits core finds the source row, reads the configured `wallet_field`, and
+   creates the invoice.
+5. If configured, LNbits dispatches `events.onInvoicePaid` when the invoice is
+   paid.
+6. The event export updates extension storage.
 
 The public page must not choose the wallet id directly. The wallet comes from
 extension storage and the `wallet.create_invoice_public` policy.
 
-BigPayment large payment flow:
+Authenticated payment flow:
 
-1. Authenticated page lists wallets with `wallet.list`.
-2. WASM reads balances with `wallet.balance.read`.
-3. User selects source wallets and a collector wallet.
-4. WASM parses the target invoice with `utils.lightning`.
-5. If the collector wallet can pay directly, WASM calls `wallet.pay_invoice`.
-6. Otherwise WASM creates internal invoices on the collector wallet with
-   `wallet.create_invoice`.
-7. WASM pays those internal invoices from selected source wallets with
-   `wallet.pay_invoice`.
-8. Once the collector wallet has enough funds, WASM pays the target invoice from
-   the collector wallet.
+1. Authenticated page lists user wallets with `wallet.list`.
+2. WASM reads balances or creates invoices only after checking that permissions
+   and route auth require a user context.
+3. WASM validates amounts, invoices, and target records before making wallet
+   calls.
+4. If outgoing payment is needed, WASM calls `wallet.pay_invoice` only from an
+   authenticated route/export.
+5. WASM stores status updates in extension-owned storage.
 
-This flow requires authenticated context. Do not expose `wallet.pay_invoice` or
-wallet balance data to public routes.
+Never expose outgoing payment capability or wallet balance data to public
+routes.
 
 ## Build
 
-Tips is authored in JavaScript and compiled to a WASM component with `jco`.
+JavaScript components are commonly bundled and componentized with `jco`.
 
-Tips build command:
+Example JavaScript build flow:
 
 ```bash
-cd lnbits/extensions/tips/dev
+cd lnbits/extensions/{ext_id}/dev
+npm run check
 npm run build:wasm
 ```
 
-This bundles `dev/src/index.js` and writes `../wasm/module.wasm`.
+Rust components are commonly compiled with `cargo component`.
 
-Tips check command:
-
-```bash
-cd lnbits/extensions/tips/dev
-npm run check
-```
-
-BigPayment is authored in Rust and compiled with `cargo component`.
-
-BigPayment build command:
+Example Rust build flow:
 
 ```bash
-cd lnbits/extensions/bigpayment/dev
+cd lnbits/extensions/{ext_id}/dev
 cargo component build --release --target wasm32-wasip1
-cp target/wasm32-wasip1/release/bigpayment.wasm ../wasm/module.wasm
+cp target/wasm32-wasip1/release/{component_name}.wasm ../wasm/module.wasm
 ```
 
-If exports, host imports, or WIT definitions change, rebuild the WASM module.
+If exports, host imports, WIT definitions, or backend logic change, rebuild
+`wasm/module.wasm`.
 
 ## Adding A Feature
 
 1. Update storage schema/migrations if data shape changes.
-2. Add or update WASM export code in `dev/src/index.js` for JS extensions or
-   `dev/src/lib.rs` for Rust extensions.
-3. Add host helper wrappers in `dev/src/lnbits-sdk.js` only when needed for JS
-   extensions.
+2. Add or update WASM export code in `dev/src/index.js` for JavaScript or
+   `dev/src/lib.rs` for Rust.
+3. Add host helper wrappers only when the language SDK needs them.
 4. Add or update `config.json` exports, routes, events, and permissions.
 5. Update `ui/*.html`, `static/*.js`, and `static/app.css` for browser behavior.
 6. Rebuild `wasm/module.wasm`.
-7. Validate `config.json` and storage JSON.
+7. Validate JSON and run the closest relevant tests/checks.
 
 ## Validation
 
 Useful checks:
 
 ```bash
-python -m json.tool lnbits/extensions/tips/config.json
-python -m json.tool lnbits/extensions/tips/storage/schema.json
-cd lnbits/extensions/tips/dev && npm run check
-cd lnbits/extensions/tips/dev && npm run build:wasm
-
-python -m json.tool lnbits/extensions/bigpayment/config.json
-python -m json.tool lnbits/extensions/bigpayment/storage/schema.json
-cd lnbits/extensions/bigpayment/dev && cargo component build --release --target wasm32-wasip1
+python -m json.tool lnbits/extensions/{ext_id}/config.json
+python -m json.tool lnbits/extensions/{ext_id}/storage/schema.json
+cd lnbits/extensions/{ext_id}/dev && npm run check
+cd lnbits/extensions/{ext_id}/dev && npm run build:wasm
+cd lnbits/extensions/{ext_id}/dev && cargo component build --release --target wasm32-wasip1
 ```
 
-If core-facing config changed, reinstall the extension in LNbits before testing.
+Use the JavaScript or Rust build command that matches the extension. If
+core-facing config changed, reinstall or reload the extension in LNbits before
+manual testing.
+
+For core changes that affect all WASM extensions, prefer generic fixture-based
+tests that create a synthetic WASM extension under a temporary extension root.
+Do not depend on a specific bundled example being installed during tests.
 
 ## Design Rules
 
@@ -419,3 +397,4 @@ If core-facing config changed, reinstall the extension in LNbits before testing.
 - WASM code must go through host functions and declared permissions.
 - Do not expose access tokens, wallet ids, owner ids, or raw private storage in
   public responses.
+- Keep generated files generated; change source and rebuild.
