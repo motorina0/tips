@@ -2,7 +2,6 @@
   "id": "tips",
   "name": "Tips",
   "short_description": "Receive Lightning tips with short messages.",
-  "tile": "/ext-assets/tips/assets/icon.png",
   "version": "0.0.1",
   "min_lnbits_version": "1.5.5",
 
@@ -54,20 +53,7 @@
         "name": "record-payment",
         "visibility": "event"
       }
-    ],
-    "resource_limits": {
-      "max_memory_bytes": 16777216,
-      "max_execution_ms": 1000,
-      "max_response_bytes": 65536
-    }
-  },
-  "ui": {
-    "entrypoint": "ui/admin.html",
-    "sandbox": true
-  },
-  "sdk": {
-    "wasm_js": "dev/src/lnbits-sdk.js",
-    "frontend_js": "static/lnbits-extension-sdk.js"
+    ]
   },
   "events": {
     "onInvoicePaid": "record-payment"
@@ -161,12 +147,10 @@
   "permissions": [
     {
       "id": "ext.storage.read",
-      "label": "Read tip jar data",
       "description": "Read data in the tips extension storage namespace."
     },
     {
       "id": "ext.storage.read_public",
-      "label": "Read public tip jar data",
       "description": "Read public tip jar fields for public pages.",
       "policies": [
         {
@@ -186,17 +170,14 @@
     },
     {
       "id": "ext.storage.write",
-      "label": "Store tip jar data",
       "description": "Write data in the tips extension storage namespace."
     },
     {
       "id": "wallet.create_invoice",
-      "label": "Create authenticated tip invoices",
       "description": "Create incoming Lightning invoices from authenticated extension pages."
     },
     {
       "id": "wallet.create_invoice_public",
-      "label": "Create tip invoices",
       "description": "Create incoming Lightning invoices for selected wallets.",
       "policies": [
         {
@@ -207,7 +188,6 @@
     },
     {
       "id": "wallet.list",
-      "label": "List wallets",
       "description": "Show the installing user's wallets so a tip jar can receive invoices."
     },
     {
@@ -226,10 +206,5 @@
         }
       ]
     }
-  ],
-  "build": {
-    "source": "dev/src/index.js",
-    "command": "cd lnbits/extensions/tips/dev && npm run build:wasm",
-    "output": "wasm/module.wasm"
-  }
+  ]
 }
