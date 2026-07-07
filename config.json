@@ -168,23 +168,21 @@
       "id": "ext.storage.read_public",
       "label": "Read public tip jar data",
       "description": "Read public tip jar fields for public pages.",
-      "policy": {
-        "tables": [
-          {
-            "table_name": "tip_jars",
-            "public_fields": [
-              "id",
-              "title",
-              "description",
-              "payment_method",
-              "currency",
-              "suggested_amounts",
-              "thank_you_message",
-              "onchain_address"
-            ]
-          }
-        ]
-      }
+      "policies": [
+        {
+          "table_name": "tip_jars",
+          "public_fields": [
+            "id",
+            "title",
+            "description",
+            "payment_method",
+            "currency",
+            "suggested_amounts",
+            "thank_you_message",
+            "onchain_address"
+          ]
+        }
+      ]
     },
     {
       "id": "ext.storage.write",
@@ -194,25 +192,18 @@
     {
       "id": "wallet.create_invoice",
       "label": "Create authenticated tip invoices",
-      "description": "Create incoming Lightning invoices from authenticated extension pages.",
-      "policy": {
-        "out": false,
-        "max_amount_sat": 10000000,
-        "required_extra_tag": "tips"
-      }
+      "description": "Create incoming Lightning invoices from authenticated extension pages."
     },
     {
       "id": "wallet.create_invoice_public",
       "label": "Create tip invoices",
       "description": "Create incoming Lightning invoices for selected wallets.",
-      "policy": {
-        "policies": [
-          {
-            "table": "tip_jars",
-            "wallet_field": "wallet_id"
-          }
-        ]
-      }
+      "policies": [
+        {
+          "table": "tip_jars",
+          "wallet_field": "wallet_id"
+        }
+      ]
     },
     {
       "id": "wallet.list",
@@ -226,16 +217,14 @@
     {
       "id": "extension.api.request",
       "description": "Read Watchonly accounts and create receive addresses for onchain tip jars.",
-      "policy": {
-        "extensions": [
-          {
-            "id": "watchonly",
-            "access": [
-              "read"
-            ]
-          }
-        ]
-      }
+      "policies": [
+        {
+          "id": "watchonly",
+          "access": [
+            "read"
+          ]
+        }
+      ]
     }
   ],
   "build": {
