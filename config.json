@@ -9,9 +9,6 @@
   "extension_type": "wasm",
   "wasm": {
     "module": "wasm/module.wasm",
-    "wit": "wasm/lnbits-extension.wit",
-    "world": "tips",
-    "host_api": "lnbits.core.extensions.ExtensionAPI",
     "exports": [
       {
         "name": "create-tip-jar",
