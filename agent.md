@@ -1,36 +1,43 @@
 # LNbits WASM Extension Agent Guide
 
 This guide describes the expected structure of an LNbits WASM extension so AI
-agents can create, review, or modify extensions without relying on a specific
-example implementation.
+agents can create, review, or modify extensions with minimal guessing.
+
+Use this file as the first source of truth when editing a WASM extension. If it
+conflicts with `config.json`, `config.json` defines what LNbits actually loads.
+If it conflicts with the source code, inspect the code before changing behavior.
 
 ## Directory Structure
 
+In development this extension may live under `data/extensions/{ext_id}`. When
+installed into LNbits it is copied under `lnbits/extensions/{ext_id}`. Paths in
+`config.json` are always relative to the extension root.
+
 ```text
-config.json
-manifest.json
+config.json                 # LNbits runtime contract
+manifest.json               # extension repository listing metadata
 wasm/
-  module.wasm
-  lnbits-extension.wit
+  module.wasm               # generated WASM component loaded by LNbits
+  lnbits-extension.wit      # host/import/export interface
 ui/
-  admin.html
-  public.html
+  admin.html                # configured private iframe entrypoint
+  public.html               # configured public iframe entrypoint
 static/
-  admin.js
-  public.js
-  app.css
-  lnbits-extension-sdk.js
+  admin.js                  # private page browser code
+  public.js                 # public page browser code
+  app.css                   # extension styling
+  lnbits-extension-sdk.js   # browser postMessage bridge SDK
   assets/
-    icon.png
+    icon.png                # icon used by LNbits for WASM extensions
 storage/
-  schema.json
+  schema.json               # current storage schema
   migrations/
+    0001_*.json             # ordered storage migrations
 dev/
-  package.json or Cargo.toml
-  scripts/
-  src/
-    index.js or lib.rs
-    lnbits-sdk.js for JavaScript components
+  <language build files>    # package/toolchain files for the source language
+  src/                      # extension source code
+  sdk/ or bindings/         # optional language-specific host wrappers
+  dist/ or target/          # generated build output; do not edit by hand
 ```
 
 Core runtime files:
@@ -46,13 +53,37 @@ Core runtime files:
 
 Development files:
 
-- JavaScript components usually keep WASM source in `dev/src/index.js`, host
-  wrappers in `dev/src/lnbits-sdk.js`, and build/check commands in
-  `dev/package.json`.
-- Rust components usually keep WASM source in `dev/src/lib.rs` and component
-  metadata/dependencies in `dev/Cargo.toml`.
-- Generated build output under `dev/dist/` or language build directories should
-  only be edited by the build tool.
+- The source language and build tool are template-specific.
+- Source code usually lives under `dev/src/`, but the exact layout is owned by
+  the selected language template.
+- Host wrappers or SDK bindings may live under `dev/sdk/`, `dev/bindings/`, or
+  another template-defined path.
+- Generated build output under `dev/dist/`, `dev/target/`, or language build
+  directories should only be edited by the build tool.
+- `wasm/module.wasm` is generated. Change source under `dev/`, then rebuild.
+- `static/admin.html`, `static/public.html`, and `static/index.html` may exist
+  for compatibility or older layouts. The active iframe entrypoints are the
+  files referenced by `ui_routes[*].entrypoint`.
+
+## Editing Rules For Agents
+
+- Keep changes inside the extension unless the user explicitly asks for LNbits
+  core changes.
+- Do not edit generated files by hand: `wasm/module.wasm`, `dev/dist/*`, build
+  cache folders, or package lockfiles unless the build command updates them.
+- If backend behavior changes, edit the language source under `dev/` and
+  rebuild `wasm/module.wasm`.
+- If host functions are needed, add or update a thin wrapper in the
+  language-specific SDK/bindings layer instead of scattering raw host imports
+  through business logic.
+- If browser behavior changes, edit `static/admin.js`, `static/public.js`,
+  `static/app.css`, or the configured files under `ui/`.
+- If routes, exports, events, permissions, or public fields change, update
+  `config.json`.
+- If stored data shape changes, update `storage/schema.json` and add a new
+  migration file. Do not edit old migrations for already released versions.
+- Keep public pages public: no account-only data, balances, outgoing payments,
+  raw wallet ids, owner ids, API keys, or access tokens in public responses.
 
 ## Config Contract
 
@@ -79,14 +110,25 @@ Common optional fields:
 - `wasm.resource_limits.max_response_bytes`: maximum serialized WASM response
   size.
 
-Do not put build-only metadata in the deployed runtime contract unless a
-separate tool explicitly consumes it. Prefer build commands in
-`dev/package.json`, `Cargo.toml`, a Makefile, or project docs.
+Do not put build-only metadata in `config.json` unless LNbits core consumes it.
+Build commands belong to the selected language template, for example in a
+toolchain file, a Makefile, or developer docs.
 
 ## WASM Exports
 
-Each entry in `wasm.exports` must match an exported function from
-`dev/src/index.js` after it is compiled into `wasm/module.wasm`.
+Each entry in `wasm.exports` must match an export in `wasm/lnbits-extension.wit`
+and the compiled `wasm/module.wasm`.
+
+Language toolchains may map WIT names to source-language function names. Do not
+guess the mapping. Follow the selected language template and make sure the final
+compiled component exports the WIT names declared in `config.json`.
+
+When adding an export, update all required contract points:
+
+1. `wasm.exports` in `config.json`.
+2. The `export ...` line in `wasm/lnbits-extension.wit`.
+3. The matching source-language function or method under `dev/`.
+4. The route or event entry that invokes the export, if any.
 
 Visibility values:
 
@@ -94,35 +136,15 @@ Visibility values:
 - `public`: callable from public extension pages.
 - `event`: callable by LNbits background/event dispatch.
 
-JavaScript exports should follow this shape:
+Exports should follow this runtime shape:
 
-```js
-export function someExport(requestJson) {
-  return runJson(() => {
-    const request = parseJsonObject(requestJson)
-    return {ok: true, data: {}}
-  })
-}
-```
-
-Rust exports should follow this shape:
-
-```rust
-impl Guest for Component {
-    fn some_export(request_json: String) -> String {
-        run_json(|| {
-            let request: SomeRequest = parse_request(&request_json)?;
-            Ok(json!({"ok": true, "data": {}}))
-        })
-    }
-}
-
-export!(Component);
+```text
+exported_function(request_json: string) -> string
 ```
 
 Every export should return a JSON string with a consistent `{ok, data, error}`
-shape. Use shared parsing and `run_json()` helpers so validation failures become
-safe, predictable responses.
+envelope. Keep envelope creation in shared helpers where the language template
+supports it, so validation failures become safe, predictable responses.
 
 ## Routes
 
@@ -176,9 +198,12 @@ Browser flow:
 5. The frontend SDK talks to the wrapper through `postMessage`.
 6. The wrapper performs allowed API calls and sends responses back.
 
-Use the frontend SDK methods instead of raw `fetch()` where possible. Add direct
-browser API calls only when they work within the iframe sandbox and content
-security policy.
+Use the browser bridge SDK shipped by the extension template instead of raw
+`fetch()` for extension API calls. The SDK should use the parent wrapper bridge,
+check message sources, and keep the iframe sandbox model intact.
+
+Do not rely on LNbits cookies inside the iframe. The iframe may be sandboxed
+without same-origin cookie access.
 
 ## WASM Host API
 
@@ -193,9 +218,15 @@ Common host namespaces:
 - `extension`: call allowed APIs from other installed extensions.
 - `utils`: currency and Lightning helpers.
 - `system`: IDs, timestamps, and logs.
+- `http`: allow-listed external HTTP requests.
 
 The host enforces permissions and owner scoping. Do not store LNbits user ids,
 access tokens, or owner ids in extension data; LNbits core owns isolation.
+
+Import raw host functions only in the language-specific SDK/bindings layer.
+Extension business logic should call wrapper methods such as `storage`,
+`wallet`, `extension`, `http`, `system`, and `utils` rather than binding
+directly to low-level host imports everywhere.
 
 ## Storage
 
@@ -209,21 +240,20 @@ Rules:
 - Public data must be explicitly exposed through `ext.storage.read_public`.
 - Do not expose wallet ids or private operational fields through public fields.
 - Do not write or query reserved internal owner fields.
+- Authenticated storage calls are scoped by LNbits to the current user.
+- Public storage reads are item-by-id only and return only allow-listed fields.
 
-Storage is accessed from WASM through the SDK:
+Storage is accessed from WASM through the language SDK:
 
-```js
-storage.set('entity_table', entity)
-const entity = storage.get('entity_table', entityId)
-const publicEntity = storage.getPublic('entity_table', entityId)
-const page = storage.getPaginated('event_table', {
-  filters: {entity_id: entityId}
-})
+```text
+storage.set(table, data)
+storage.get(table, id)
+storage.get_public(table, id)
+storage.get_paginated(table, filters, search, sort, pagination)
 ```
 
 Use storage schemas as the source of truth. Reject unknown fields before storing
-records, and keep public response objects smaller than the configured WASM
-response limit.
+records, and keep public response objects small.
 
 ## Permissions
 
@@ -302,6 +332,27 @@ Policy examples:
 Do not add a permission unless the extension actually calls the matching host
 API.
 
+For `ext.storage.read_public`, policy entries must use:
+
+- `table_name`: the table that public pages may read by id.
+- `public_fields`: fields that may be returned to public pages.
+
+Do not expose `wallet_id`, `wallet_name`, `watchonly_wallet_id`,
+`watchonly_wallet_name`, `slug`, `created_at`, or `updated_at` publicly unless
+there is a deliberate product and security reason.
+
+For `wallet.create_invoice_public`, policy entries must use:
+
+- `table`: the table that contains the public source record.
+- `wallet_field`: the field on that table containing the wallet id.
+
+Public pages pass `sourceId`; they do not pass wallet ids.
+
+For `extension.api.request`, policy entries must use:
+
+- `id`: target extension id.
+- `access`: `["read"]`, `["write"]`, or both.
+
 For `http.request`, each policy entry must be either an HTTPS origin string or
 an object with a `host` field. The host policy is origin-based, so a policy for
 `https://api.example.com` allows requests to that origin, not arbitrary hosts.
@@ -326,9 +377,9 @@ extension API calls.
 
 Public invoice flow:
 
-1. Public page reads allow-listed source data with `storage.getPublic`.
+1. Public page reads allow-listed source data with `storage.get_public`.
 2. Public page calls a public extension API route.
-3. WASM calls `wallet.createInvoicePublic({sourceId, amount, currency, memo})`.
+3. WASM calls `wallet.create_invoice_public(source_id, amount, currency, memo)`.
 4. LNbits core finds the source row, reads the configured `wallet_field`, and
    creates the invoice.
 5. If configured, LNbits dispatches `events.onInvoicePaid` when the invoice is
@@ -354,35 +405,30 @@ routes.
 
 ## Build
 
-JavaScript components are commonly bundled and componentized with `jco`.
+Build steps are owned by the selected language template. The build must produce
+`wasm/module.wasm` as a WebAssembly component that matches
+`wasm/lnbits-extension.wit`.
 
-Example JavaScript build flow:
-
-```bash
-cd lnbits/extensions/{ext_id}/dev
-npm run check
-npm run build:wasm
-```
-
-Rust components are commonly compiled with `cargo component`.
-
-Example Rust build flow:
+Generic build flow:
 
 ```bash
-cd lnbits/extensions/{ext_id}/dev
-cargo component build --release --target wasm32-wasip1
-cp target/wasm32-wasip1/release/{component_name}.wasm ../wasm/module.wasm
+cd <extension-root>/dev
+<language-check-command>
+<language-build-command>
 ```
 
-If exports, host imports, WIT definitions, or backend logic change, rebuild
-`wasm/module.wasm`.
+Use the toolchain declared by the selected template. The only required output is
+a WASM component compatible with the WIT file.
+
+If exports, host imports, WIT definitions, dependencies, or backend logic
+change, rebuild `wasm/module.wasm`.
 
 ## Adding A Feature
 
 1. Update storage schema/migrations if data shape changes.
-2. Add or update WASM export code in `dev/src/index.js` for JavaScript or
-   `dev/src/lib.rs` for Rust.
-3. Add host helper wrappers only when the language SDK needs them.
+2. Add or update WASM export code in the language source under `dev/`.
+3. Add host helper wrappers only when the language SDK/bindings layer needs
+   them.
 4. Add or update `config.json` exports, routes, events, and permissions.
 5. Update `ui/*.html`, `static/*.js`, and `static/app.css` for browser behavior.
 6. Rebuild `wasm/module.wasm`.
@@ -393,14 +439,13 @@ If exports, host imports, WIT definitions, or backend logic change, rebuild
 Useful checks:
 
 ```bash
-python -m json.tool lnbits/extensions/{ext_id}/config.json
-python -m json.tool lnbits/extensions/{ext_id}/storage/schema.json
-cd lnbits/extensions/{ext_id}/dev && npm run check
-cd lnbits/extensions/{ext_id}/dev && npm run build:wasm
-cd lnbits/extensions/{ext_id}/dev && cargo component build --release --target wasm32-wasip1
+python -m json.tool <extension-root>/config.json
+python -m json.tool <extension-root>/storage/schema.json
+cd <extension-root>/dev && <language-check-command>
+cd <extension-root>/dev && <language-build-command>
 ```
 
-Use the JavaScript or Rust build command that matches the extension. If
+Use the check and build commands from the selected language template. If
 core-facing config changed, reinstall or reload the extension in LNbits before
 manual testing.
 
