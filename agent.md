@@ -9,9 +9,11 @@ If it conflicts with the source code, inspect the code before changing behavior.
 
 ## Directory Structure
 
-In development this extension may live under `data/extensions/{ext_id}`. When
-installed into LNbits it is copied under `lnbits/extensions/{ext_id}`. Paths in
-`config.json` are always relative to the extension root.
+Extensions are installed under `{LNBITS_EXTENSIONS_PATH}/extensions/{ext_id}`.
+`LNBITS_EXTENSIONS_PATH` defaults to `./lnbits/`, but deployments often set it
+to another directory such as `./data`. In this guide, `<extension-root>` means
+the actual `{LNBITS_EXTENSIONS_PATH}/extensions/{ext_id}` directory. Paths in
+`config.json` are always relative to that extension root.
 
 ```text
 config.json                 # LNbits runtime contract
