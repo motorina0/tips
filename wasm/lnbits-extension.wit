@@ -67,6 +67,29 @@ interface host {
     checking-id: string
   }
 
+  record pay-lnurl-request {
+    wallet-id: string,
+    lnurl: string,
+    amount: f64,
+    currency: string,
+    comment: option<string>,
+    description: string,
+    max-sat: option<u64>,
+    extra: list<tuple<string, string>>
+  }
+
+  record pay-invoice-response {
+    ok: bool,
+    error: option<string>,
+    checking-id: option<string>,
+    payment-hash: option<string>,
+    status: option<string>,
+    amount-msat: u64,
+    fee-msat: u64,
+    pending: bool,
+    success: bool
+  }
+
   record user-wallet-summary {
     id: string,
     name: string,
@@ -125,6 +148,7 @@ interface host {
   storage-delete: func(request: storage-delete-request) -> storage-delete-response;
   create-invoice: func(request: invoice-request) -> invoice-response;
   create-invoice-public: func(request: invoice-public-request) -> invoice-response;
+  pay-lnurl: func(request: pay-lnurl-request) -> pay-invoice-response;
   list-user-wallets: func() -> list-user-wallets-response;
   http-request: func(request: http-request-options) -> http-response-data;
   extension-api-request: func(request: extension-api-request-options) -> http-response-data;
@@ -261,6 +285,7 @@ world tips {
   import utils-lightning;
 
   export create-tip-jar: func(request-json: string) -> string;
+  export update-tip-jar: func(request-json: string) -> string;
   export list-tip-jars: func(request-json: string) -> string;
   export delete-tip-jar: func(request-json: string) -> string;
   export list-tip-jar-tips: func(request-json: string) -> string;

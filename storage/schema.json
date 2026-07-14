@@ -57,6 +57,18 @@
           "type": "string"
         },
         {
+          "name": "platform_support_enabled",
+          "type": "boolean"
+        },
+        {
+          "name": "platform_support_percentage",
+          "type": "integer"
+        },
+        {
+          "name": "platform_support_lnurl",
+          "type": "string"
+        },
+        {
           "name": "created_at",
           "type": "datetime"
         },

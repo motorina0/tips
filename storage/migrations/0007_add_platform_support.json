@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "description": "Store optional platform support split settings on tip jars.",
+  "operations": [
+    {
+      "op": "add_field",
+      "table": "tip_jars",
+      "field": "platform_support_enabled",
+      "type": "boolean",
+      "default": false
+    },
+    {
+      "op": "add_field",
+      "table": "tip_jars",
+      "field": "platform_support_percentage",
+      "type": "integer",
+      "default": 0
+    },
+    {
+      "op": "add_field",
+      "table": "tip_jars",
+      "field": "platform_support_lnurl",
+      "type": "string",
+      "default": ""
+    }
+  ]
+}

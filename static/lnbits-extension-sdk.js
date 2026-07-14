@@ -26,6 +26,13 @@
         })
       },
 
+      updateJar(jarId, payload) {
+        return request(`${baseUrl}/jars/${encodeURIComponent(jarId)}`, {
+          method: 'PUT',
+          body: payload
+        })
+      },
+
       listJars(params = {}) {
         const query = new URLSearchParams()
         for (const [key, value] of Object.entries(params)) {
@@ -78,6 +85,13 @@
         return request(`${baseUrl}/invoice`, {
           method: 'POST',
           body: payload
+        })
+      },
+
+      requestBackgroundPaymentPermission(grant) {
+        return bridgeRequest({
+          action: 'permissions.request_background_payment',
+          grant
         })
       },
 

@@ -6,6 +6,7 @@ import {
   listUserWallets,
   log,
   now,
+  payLnurl,
   randomId,
   storageDelete,
   storageGet,
@@ -85,6 +86,22 @@ const extensionApi = {
         amount: Number(input.amount),
         currency: input.currency || 'sat',
         memo: input.memo || '',
+        extra: Object.entries(input.extra || {}).map(([key, value]) => [
+          key,
+          String(value)
+        ])
+      })
+    },
+
+    payLnurl(input) {
+      return payLnurl({
+        walletId: input.walletId,
+        lnurl: input.lnurl,
+        amount: Number(input.amount),
+        currency: input.currency || 'sat',
+        comment: input.comment || undefined,
+        description: input.description || '',
+        maxSat: input.maxSat ? Number(input.maxSat) : undefined,
         extra: Object.entries(input.extra || {}).map(([key, value]) => [
           key,
           String(value)
@@ -268,6 +285,28 @@ const wallet = {
       amount,
       currency,
       memo,
+      extra
+    })
+  },
+
+  payLnurl({
+    walletId,
+    lnurl,
+    amount,
+    currency = 'sat',
+    comment = '',
+    description = '',
+    maxSat = undefined,
+    extra = {}
+  }) {
+    return extensionApi.wallet.payLnurl({
+      walletId,
+      lnurl,
+      amount,
+      currency,
+      comment,
+      description,
+      maxSat,
       extra
     })
   }
@@ -457,6 +496,7 @@ export function createTipJar(requestJson) {
     const thankYouMessage =
       cleanText(request.thankYouMessage, 160) || 'Thanks for the tip.'
     const suggestedAmounts = normalizeAmounts(request.suggestedAmounts, currency)
+    const platformSupport = normalizePlatformSupport(request, paymentMethod)
     const timestamp = system.now()
 
     const jar = {
@@ -473,12 +513,78 @@ export function createTipJar(requestJson) {
       slug: cleanSlug(request.slug) || id,
       suggested_amounts: suggestedAmounts,
       thank_you_message: thankYouMessage,
+      platform_support_enabled: platformSupport.enabled,
+      platform_support_percentage: platformSupport.percentage,
+      platform_support_lnurl: platformSupport.lnurl,
       created_at: timestamp,
       updated_at: timestamp
     }
 
     storage.set(JARS_TABLE, jar)
     system.log(`tips: created jar ${id}`)
+    return publicJar(jar)
+  })
+}
+
+export function updateTipJar(requestJson) {
+  return runJson(() => {
+    const request = parseJsonObject(requestJson)
+    const jarId = requiredText(request.jarId, 'jarId', 128)
+    const existing = getJar(jarId)
+    const title = cleanText(request.title, 80) || 'Tip jar'
+    const description = cleanText(request.description, 280)
+    const paymentMethod = normalizePaymentMethod(request.paymentMethod)
+    const currency = normalizeCurrency(request.currency)
+    const walletId =
+      paymentMethod === 'lightning'
+        ? requiredText(request.walletId, 'walletId', 128)
+        : ''
+    const walletName =
+      paymentMethod === 'lightning'
+        ? cleanText(request.walletName, 120) || walletId
+        : ''
+    const watchonlyWalletId =
+      paymentMethod === 'onchain'
+        ? requiredText(request.watchonlyWalletId, 'watchonlyWalletId', 128)
+        : ''
+    const watchonlyWalletName =
+      paymentMethod === 'onchain'
+        ? cleanText(request.watchonlyWalletName, 120) || watchonlyWalletId
+        : ''
+    const onchainAddress =
+      paymentMethod === 'onchain'
+        ? existing.watchonly_wallet_id === watchonlyWalletId &&
+          existing.onchain_address
+          ? existing.onchain_address
+          : freshWatchonlyAddress(watchonlyWalletId)
+        : ''
+    const thankYouMessage =
+      cleanText(request.thankYouMessage, 160) || 'Thanks for the tip.'
+    const suggestedAmounts = normalizeAmounts(request.suggestedAmounts, currency)
+    const platformSupport = normalizePlatformSupport(request, paymentMethod)
+
+    const jar = {
+      ...existing,
+      id: jarId,
+      title,
+      description,
+      payment_method: paymentMethod,
+      currency,
+      wallet_id: walletId,
+      wallet_name: walletName,
+      watchonly_wallet_id: watchonlyWalletId,
+      watchonly_wallet_name: watchonlyWalletName,
+      onchain_address: onchainAddress,
+      suggested_amounts: suggestedAmounts,
+      thank_you_message: thankYouMessage,
+      platform_support_enabled: platformSupport.enabled,
+      platform_support_percentage: platformSupport.percentage,
+      platform_support_lnurl: platformSupport.lnurl,
+      updated_at: system.now()
+    }
+
+    storage.set(JARS_TABLE, jar)
+    system.log(`tips: updated jar ${jarId}`)
     return publicJar(jar)
   })
 }
@@ -644,18 +750,22 @@ export function recordPayment(eventJson) {
 
       const paidTip = {...tip, paid: true, paid_at: system.now()}
       storage.set(TIPS_TABLE, paidTip)
+      const jar = getJar(paidTip.jar_id)
+      const platformPayment = maybePayPlatformSupport(jar, paidTip)
       system.log(`tips: marked tip ${paidTip.id} as paid`)
-      return {ok: true, tipId: paidTip.id, paid: true}
+      return {ok: true, tipId: paidTip.id, paid: true, platformPayment}
     }
 
     if (!sourceId) {
       return {ok: false, error: 'payment source not found'}
     }
 
+    const jar = getJar(sourceId)
     const paidTip = paidTipFromEvent(event, sourceId, paymentHash)
     storage.set(TIPS_TABLE, paidTip)
+    const platformPayment = maybePayPlatformSupport(jar, paidTip)
     system.log(`tips: recorded paid public tip ${paidTip.id}`)
-    return {ok: true, tipId: paidTip.id, paid: true}
+    return {ok: true, tipId: paidTip.id, paid: true, platformPayment}
   })
 }
 
@@ -734,6 +844,68 @@ function paidTipFromEvent(event, jarId, paymentHash) {
     paid: true,
     created_at: timestamp,
     paid_at: timestamp
+  }
+}
+
+function maybePayPlatformSupport(jar, tip) {
+  const support = platformSupportFromJar(jar)
+  if (!support.enabled) return {paid: false, skipped: 'disabled'}
+  if ((jar.payment_method || 'lightning') !== 'lightning') {
+    return {paid: false, skipped: 'not a Lightning jar'}
+  }
+  if (!jar.wallet_id) return {paid: false, skipped: 'missing wallet'}
+
+  const tipAmount = Number(tip.amount_sat || 0)
+  const amount = Math.floor((tipAmount * support.percentage) / 100)
+  if (!Number.isInteger(amount) || amount <= 0) {
+    return {paid: false, skipped: 'amount too small'}
+  }
+
+  try {
+    const payment = wallet.payLnurl({
+      walletId: jar.wallet_id,
+      lnurl: support.lnurl,
+      amount,
+      currency: 'sat',
+      comment: `Platform support from ${cleanText(jar.title, 80) || 'tip jar'}`,
+      description: `Platform support from ${cleanText(jar.title, 80) || 'tip jar'}`,
+      maxSat: amount,
+      extra: {
+        jarId: jar.id,
+        tipId: tip.id,
+        platformSupport: 'true'
+      }
+    })
+
+    if (payment && payment.ok === false) {
+      throw new Error(payment.error || 'Platform support payment failed.')
+    }
+
+    system.log(
+      `tips: sent ${amount} sats platform support for tip ${tip.id}`
+    )
+    return {
+      paid: true,
+      amountSat: amount,
+      paymentHash: payment?.paymentHash || payment?.payment_hash || '',
+      checkingId: payment?.checkingId || payment?.checking_id || ''
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    system.log(
+      `tips: platform support payment failed for tip ${tip.id}: ${message}`,
+      'warning'
+    )
+    return {paid: false, error: message}
+  }
+}
+
+function platformSupportFromJar(jar) {
+  const percentage = Number(jar.platform_support_percentage || 0)
+  return {
+    enabled: jar.platform_support_enabled === true,
+    percentage: Number.isInteger(percentage) ? percentage : 0,
+    lnurl: cleanText(jar.platform_support_lnurl, 2048)
   }
 }
 
@@ -863,6 +1035,8 @@ function publicJar(jar) {
     description: jar.description,
     paymentMethod: jar.payment_method || 'lightning',
     currency: normalizeCurrency(jar.currency || 'sat'),
+    walletId: jar.wallet_id || '',
+    watchonlyWalletId: jar.watchonly_wallet_id || '',
     walletName:
       jar.payment_method === 'onchain'
         ? jar.watchonly_wallet_name
@@ -871,6 +1045,10 @@ function publicJar(jar) {
     slug: jar.slug,
     suggestedAmounts: jar.suggested_amounts,
     thankYouMessage: jar.thank_you_message,
+    platformSupportMode:
+      jar.platform_support_enabled === true ? 'platform' : 'none',
+    platformSupportPercentage: Number(jar.platform_support_percentage || 0),
+    platformSupportLnurl: jar.platform_support_lnurl || '',
     createdAt: jar.created_at,
     updatedAt: jar.updated_at
   }
@@ -978,6 +1156,36 @@ function normalizeTipSortBy(value) {
 
 function normalizePaymentMethod(value) {
   return value === 'onchain' ? 'onchain' : 'lightning'
+}
+
+function normalizePlatformSupport(request, paymentMethod) {
+  const mode = cleanText(request.platformSupportMode, 32)
+  const enabled =
+    mode === 'platform' ||
+    mode === 'pay_platform' ||
+    request.platformSupportEnabled === true
+
+  if (!enabled) {
+    return {enabled: false, percentage: 0, lnurl: ''}
+  }
+  if (paymentMethod !== 'lightning') {
+    throw new Error('Platform support is only available for Lightning jars.')
+  }
+
+  const percentage = Number(request.platformSupportPercentage)
+  if (
+    !Number.isInteger(percentage) ||
+    percentage < 1 ||
+    percentage > 100
+  ) {
+    throw new Error('Platform support percentage must be an integer from 1 to 100.')
+  }
+
+  return {
+    enabled: true,
+    percentage,
+    lnurl: requiredText(request.platformSupportLnurl, 'platform LNURL', 2048)
+  }
 }
 
 function cleanId(value) {

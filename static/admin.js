@@ -14,8 +14,12 @@ const app = Vue.createApp({
         walletId: null,
         watchonlyWalletId: null,
         suggestedAmounts: '100,500,1000',
-        thankYouMessage: 'Thanks for the tip.'
+        thankYouMessage: 'Thanks for the tip.',
+        platformSupportMode: 'none',
+        platformSupportPercentage: 10,
+        platformSupportLnurl: ''
       },
+      editingJarId: null,
       bitcoinRate: {
         loading: false,
         data: null,
@@ -166,6 +170,7 @@ const app = Vue.createApp({
   watch: {
     'form.paymentMethod'(value) {
       if (value === 'onchain') {
+        this.form.platformSupportMode = 'none'
         this.fetchWatchonlyWallets()
       }
     },
@@ -210,11 +215,37 @@ const app = Vue.createApp({
       }))
     },
 
+    platformSupportOptions() {
+      return [
+        {
+          label: 'No payment',
+          value: 'none'
+        },
+        {
+          label: 'Pay to platform',
+          value: 'platform',
+          disable: this.form.paymentMethod !== 'lightning'
+        }
+      ]
+    },
+
+    platformSupportEnabled() {
+      return this.form.platformSupportMode === 'platform'
+    },
+
     canCreateJar() {
       if (this.form.paymentMethod === 'onchain') {
         return !!this.form.watchonlyWalletId && !this.watchonlyWalletsLoading
       }
-      return !!this.form.walletId
+      if (!this.form.walletId) return false
+      if (!this.platformSupportEnabled) return true
+      const percentage = Number(this.form.platformSupportPercentage)
+      return (
+        Number.isInteger(percentage) &&
+        percentage >= 1 &&
+        percentage <= 100 &&
+        !!String(this.form.platformSupportLnurl || '').trim()
+      )
     }
   },
 
@@ -319,13 +350,31 @@ const app = Vue.createApp({
     async createJar() {
       this.creating = true
       try {
+        const payload = this.jarPayload()
+        await this.requestPlatformSupportGrant(payload)
+        const jar = this.editingJarId
+          ? await client.updateJar(this.editingJarId, payload)
+          : await client.createJar(payload)
+        this.editingJarId = null
+        await this.fetchJars()
+        if (jar?.id) {
+          await this.selectJar(jar)
+        }
+      } catch (error) {
+        this.showError(error)
+      } finally {
+        this.creating = false
+      }
+    },
+
+    jarPayload() {
         const wallet = this.wallets.find(
           wallet => wallet.id === this.form.walletId
         )
         const watchonlyWallet = this.watchonlyWallets.find(
           wallet => wallet.id === this.form.watchonlyWalletId
         )
-        const jar = await client.createJar({
+        return {
           title: this.form.title,
           description: this.form.description,
           paymentMethod: this.form.paymentMethod,
@@ -339,17 +388,27 @@ const app = Vue.createApp({
             .split(',')
             .map(value => Number(value.trim()))
             .filter(Boolean),
-          thankYouMessage: this.form.thankYouMessage
-        })
-        await this.fetchJars()
-        if (jar?.id) {
-          await this.selectJar(jar)
+          thankYouMessage: this.form.thankYouMessage,
+          platformSupportMode: this.form.platformSupportMode,
+          platformSupportPercentage: Number(this.form.platformSupportPercentage),
+          platformSupportLnurl: this.form.platformSupportLnurl
         }
-      } catch (error) {
-        this.showError(error)
-      } finally {
-        this.creating = false
+    },
+
+    async requestPlatformSupportGrant(payload) {
+      if (
+        payload.paymentMethod !== 'lightning' ||
+        payload.platformSupportMode !== 'platform'
+      ) {
+        return
       }
+      await client.requestBackgroundPaymentPermission({
+        walletId: payload.walletId,
+        maxAmount: 10000,
+        dailyLimit: 100000,
+        reserveAmount: 0,
+        destinationPolicy: 'external_allowed'
+      })
     },
 
     searchJars() {
@@ -398,6 +457,37 @@ const app = Vue.createApp({
       this.selectedJar = jar
       this.tipsTable.pagination.page = 1
       await this.fetchTips()
+    },
+
+    async editJar(jar) {
+      this.editingJarId = jar.id
+      this.form = {
+        title: jar.title || '',
+        description: jar.description || '',
+        paymentMethod: jar.paymentMethod || 'lightning',
+        currency: jar.currency || 'sat',
+        walletId: jar.walletId || null,
+        watchonlyWalletId: jar.watchonlyWalletId || null,
+        suggestedAmounts: Array.isArray(jar.suggestedAmounts)
+          ? jar.suggestedAmounts.join(',')
+          : '',
+        thankYouMessage: jar.thankYouMessage || '',
+        platformSupportMode: jar.platformSupportMode || 'none',
+        platformSupportPercentage: Number(jar.platformSupportPercentage || 10),
+        platformSupportLnurl: jar.platformSupportLnurl || ''
+      }
+      if (this.form.paymentMethod === 'onchain') {
+        await this.fetchWatchonlyWallets()
+      }
+      await this.selectJar(jar)
+    },
+
+    cancelEdit() {
+      this.editingJarId = null
+      this.form.platformSupportMode =
+        this.form.paymentMethod === 'lightning'
+          ? this.form.platformSupportMode
+          : 'none'
     },
 
     async fetchTips(props = {}) {
@@ -698,8 +788,16 @@ const app = Vue.createApp({
                   h(
                     'h2',
                     {class: 'text-h6 text-weight-bold q-my-none'},
-                    'Create Jar'
-                  )
+                    this.editingJarId ? 'Edit Jar' : 'Create Jar'
+                  ),
+                  this.editingJarId
+                    ? h(QBtn, {
+                        flat: true,
+                        dense: true,
+                        label: 'Cancel',
+                        onClick: this.cancelEdit
+                      })
+                    : null
                 ]),
                 h(
                   QForm,
@@ -794,7 +892,34 @@ const app = Vue.createApp({
                           }),
                           formInput('suggestedAmounts', {
                             label: `Suggested amounts (${this.form.currency === 'sat' ? 'sats' : this.form.currency})`
-                          })
+                          }),
+                          h(QSelect, {
+                            modelValue: this.form.platformSupportMode,
+                            'onUpdate:modelValue': value => {
+                              this.form.platformSupportMode = value || 'none'
+                            },
+                            dark: true,
+                            filled: true,
+                            dense: true,
+                            emitValue: true,
+                            mapOptions: true,
+                            label: 'Support the platform',
+                            options: this.platformSupportOptions
+                          }),
+                          this.platformSupportEnabled
+                            ? h('div', {class: 'q-gutter-md'}, [
+                                formInput('platformSupportPercentage', {
+                                  label: 'Platform percentage',
+                                  type: 'number',
+                                  min: 1,
+                                  max: 100
+                                }),
+                                formInput('platformSupportLnurl', {
+                                  label: 'Platform Lightning Address or LNURL',
+                                  maxlength: 2048
+                                })
+                              ])
+                            : null
                         ])
                       ]),
                       h(
@@ -809,7 +934,8 @@ const app = Vue.createApp({
                           onClick: this.createJar
                         },
                         {
-                          default: () => 'Create'
+                          default: () =>
+                            this.editingJarId ? 'Save Changes' : 'Create'
                         }
                       )
                     ]
@@ -939,32 +1065,58 @@ const app = Vue.createApp({
                         {props},
                         {
                           default: () =>
-                            h(
-                              QBtn,
-                              {
-                                flat: true,
-                                dense: true,
-                                round: true,
-                                icon: 'content_copy',
-                                onClick: event => {
-                                  event.stopPropagation()
-                                  this.copyPublicUrl(
-                                    this.publicJarUrl(props.row.id)
-                                  )
+                            h('div', {class: 'row justify-end no-wrap'}, [
+                              h(
+                                QBtn,
+                                {
+                                  flat: true,
+                                  dense: true,
+                                  round: true,
+                                  icon: 'edit',
+                                  onClick: event => {
+                                    event.stopPropagation()
+                                    this.editJar(props.row)
+                                  }
+                                },
+                                {
+                                  default: () => [
+                                    h(
+                                      QTooltip,
+                                      {},
+                                      {
+                                        default: () => 'Edit jar'
+                                      }
+                                    )
+                                  ]
                                 }
-                              },
-                              {
-                                default: () => [
-                                  h(
-                                    QTooltip,
-                                    {},
-                                    {
-                                      default: () => 'Copy public link'
-                                    }
-                                  )
-                                ]
-                              }
-                            )
+                              ),
+                              h(
+                                QBtn,
+                                {
+                                  flat: true,
+                                  dense: true,
+                                  round: true,
+                                  icon: 'content_copy',
+                                  onClick: event => {
+                                    event.stopPropagation()
+                                    this.copyPublicUrl(
+                                      this.publicJarUrl(props.row.id)
+                                    )
+                                  }
+                                },
+                                {
+                                  default: () => [
+                                    h(
+                                      QTooltip,
+                                      {},
+                                      {
+                                        default: () => 'Copy public link'
+                                      }
+                                    )
+                                  ]
+                                }
+                              )
+                            ])
                         }
                       )
                   }

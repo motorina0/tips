@@ -6,6 +6,7 @@ import {
   listUserWallets,
   log,
   now,
+  payLnurl,
   randomId,
   storageDelete,
   storageGet,
@@ -85,6 +86,22 @@ export const extensionApi = {
         amount: Number(input.amount),
         currency: input.currency || 'sat',
         memo: input.memo || '',
+        extra: Object.entries(input.extra || {}).map(([key, value]) => [
+          key,
+          String(value)
+        ])
+      })
+    },
+
+    payLnurl(input) {
+      return payLnurl({
+        walletId: input.walletId,
+        lnurl: input.lnurl,
+        amount: Number(input.amount),
+        currency: input.currency || 'sat',
+        comment: input.comment || undefined,
+        description: input.description || '',
+        maxSat: input.maxSat ? Number(input.maxSat) : undefined,
         extra: Object.entries(input.extra || {}).map(([key, value]) => [
           key,
           String(value)
@@ -268,6 +285,28 @@ export const wallet = {
       amount,
       currency,
       memo,
+      extra
+    })
+  },
+
+  payLnurl({
+    walletId,
+    lnurl,
+    amount,
+    currency = 'sat',
+    comment = '',
+    description = '',
+    maxSat = undefined,
+    extra = {}
+  }) {
+    return extensionApi.wallet.payLnurl({
+      walletId,
+      lnurl,
+      amount,
+      currency,
+      comment,
+      description,
+      maxSat,
       extra
     })
   }

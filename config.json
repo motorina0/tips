@@ -14,6 +14,10 @@
         "visibility": "authenticated"
       },
       {
+        "name": "update-tip-jar",
+        "visibility": "authenticated"
+      },
+      {
         "name": "list-tip-jars",
         "visibility": "authenticated"
       },
@@ -79,6 +83,15 @@
       "path": "/jars",
       "export": "create-tip-jar",
       "auth": "user"
+    },
+    {
+      "method": "PUT",
+      "path": "/jars/{jar_id}",
+      "export": "update-tip-jar",
+      "auth": "user",
+      "path_params": {
+        "jar_id": "jarId"
+      }
     },
     {
       "method": "GET",
@@ -185,6 +198,10 @@
           "wallet_field": "wallet_id"
         }
       ]
+    },
+    {
+      "id": "wallet.pay_invoice_background",
+      "description": "Send configured platform support payments after tips are received."
     },
     {
       "id": "wallet.list",
