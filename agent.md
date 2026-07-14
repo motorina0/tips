@@ -53,6 +53,12 @@ Core runtime files:
 - `storage/schema.json`: current storage schema.
 - `storage/migrations/*.json`: ordered storage migrations.
 
+LNbits core UI assets used by iframe pages must be loaded through the approved
+extension asset proxy, not through `/static`. Use
+`/ext-assets/{ext_id}/_lnbits/{asset_name}` for approved shared assets such as
+`bundle.min.css`, `material-icons.css`, `vue.global.prod.js`,
+`quasar.umd.prod.js`, and `qrcode.vue.browser.js`.
+
 Development files:
 
 - The source language and build tool are template-specific.
@@ -199,6 +205,11 @@ Browser flow:
 4. The iframe loads browser assets from `/ext-assets/{ext_id}/...`.
 5. The frontend SDK talks to the wrapper through `postMessage`.
 6. The wrapper performs allowed API calls and sends responses back.
+
+Do not load LNbits core browser files directly from `/static` inside extension
+HTML. Shared LNbits assets must use
+`/ext-assets/{ext_id}/_lnbits/{asset_name}` so the frame CSP can remain narrow
+and extension pages do not depend on the full LNbits app page context.
 
 Use the browser bridge SDK shipped by the extension template instead of raw
 `fetch()` for extension API calls. The SDK should use the parent wrapper bridge,
