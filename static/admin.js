@@ -405,8 +405,6 @@ const app = Vue.createApp({
       await client.requestBackgroundPaymentPermission({
         walletId: payload.walletId,
         maxAmount: 10000,
-        dailyLimit: 100000,
-        reserveAmount: 0,
         destinationPolicy: 'external_allowed'
       })
     },

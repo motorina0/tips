@@ -12,6 +12,7 @@ import {
   storageGet,
   storageGetPublic,
   storageGetPaginated,
+  storageAppendPublic,
   storageSet
 } from 'lnbits:extension/host'
 import {
@@ -41,6 +42,14 @@ export const extensionApi = {
 
     getPublic(input) {
       return storageGetPublic(input)
+    },
+
+    appendPublic(input) {
+      return storageAppendPublic({
+        table: input.table,
+        sourceId: input.sourceId,
+        dataJson: JSON.stringify(input.data || {})
+      })
     },
 
     set(input) {
@@ -229,6 +238,10 @@ export const storage = {
     const {dataJson} = extensionApi.storage.getPublic({table, id})
     if (!dataJson) return fallback
     return JSON.parse(dataJson)
+  },
+
+  appendPublic(table, sourceId, data) {
+    return extensionApi.storage.appendPublic({table, sourceId, data}).id
   },
 
   set(table, data) {

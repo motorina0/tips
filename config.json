@@ -186,6 +186,25 @@
       "description": "Write data in the tips extension storage namespace."
     },
     {
+      "id": "ext.storage.append_public",
+      "description": "Create pending tip rows from public tip jar pages.",
+      "policies": [
+        {
+          "table": "tips",
+          "source_table": "tip_jars",
+          "source_id_field": "jar_id",
+          "allowed_fields": [
+            "amount_sat",
+            "name",
+            "message",
+            "payment_hash",
+            "paid",
+            "created_at"
+          ]
+        }
+      ]
+    },
+    {
       "id": "wallet.create_invoice",
       "description": "Create incoming Lightning invoices from authenticated extension pages."
     },

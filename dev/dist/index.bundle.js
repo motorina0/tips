@@ -12,6 +12,7 @@ import {
   storageGet,
   storageGetPublic,
   storageGetPaginated,
+  storageAppendPublic,
   storageSet
 } from 'lnbits:extension/host'
 import {
@@ -41,6 +42,14 @@ const extensionApi = {
 
     getPublic(input) {
       return storageGetPublic(input)
+    },
+
+    appendPublic(input) {
+      return storageAppendPublic({
+        table: input.table,
+        sourceId: input.sourceId,
+        dataJson: JSON.stringify(input.data || {})
+      })
     },
 
     set(input) {
@@ -229,6 +238,10 @@ const storage = {
     const {dataJson} = extensionApi.storage.getPublic({table, id})
     if (!dataJson) return fallback
     return JSON.parse(dataJson)
+  },
+
+  appendPublic(table, sourceId, data) {
+    return extensionApi.storage.appendPublic({table, sourceId, data}).id
   },
 
   set(table, data) {
@@ -706,16 +719,26 @@ export function createTipInvoice(requestJson) {
     const name = cleanText(request.name, 60) || 'Anonymous'
     const message = cleanText(request.message, 280)
     const memo = message ? `${jar.title}: ${message}` : jar.title
+    const timestamp = system.now()
+    const tipId = storage.appendPublic(TIPS_TABLE, jarId, {
+      amount_sat: invoiceAmountSat(amount, currency),
+      name,
+      message,
+      payment_hash: '',
+      paid: false,
+      created_at: timestamp
+    })
 
     const invoice = wallet.createInvoicePublic({
       sourceId: jarId,
       amount,
       currency,
       memo,
-      extra: {name, message}
+      extra: {name, message, tipId}
     })
 
     return {
+      tipId,
       paymentHash: invoice.paymentHash,
       paymentRequest: invoice.paymentRequest,
       checkingId: invoice.checkingId
@@ -748,7 +771,12 @@ export function recordPayment(eventJson) {
         return {ok: true, tipId: tip.id, paid: true, alreadyPaid: true}
       }
 
-      const paidTip = {...tip, paid: true, paid_at: system.now()}
+      const paidTip = {
+        ...tip,
+        payment_hash: paymentHash,
+        paid: true,
+        paid_at: system.now()
+      }
       storage.set(TIPS_TABLE, paidTip)
       const jar = getJar(paidTip.jar_id)
       const platformPayment = maybePayPlatformSupport(jar, paidTip)
@@ -821,13 +849,16 @@ function eventSourceId(event) {
 }
 
 function eventTipId(event) {
+  const tipExtra = eventExtensionExtra(event)
   return (
     cleanText(event.tipId, 128) ||
     cleanText(event.tip_id, 128) ||
     cleanText(event.extra?.tipId, 128) ||
     cleanText(event.extra?.tip_id, 128) ||
     cleanText(event.payment?.extra?.tipId, 128) ||
-    cleanText(event.payment?.extra?.tip_id, 128)
+    cleanText(event.payment?.extra?.tip_id, 128) ||
+    cleanText(tipExtra.tipId, 128) ||
+    cleanText(tipExtra.tip_id, 128)
   )
 }
 
@@ -920,6 +951,15 @@ function eventExtensionExtra(event) {
 function eventAmountSat(event) {
   const amount = Number(event.amount || event.payment?.amount || 0)
   return Number.isFinite(amount) ? Math.abs(Math.trunc(amount / 1000)) : 0
+}
+
+function invoiceAmountSat(amount, currency) {
+  if (currency === 'sat') return Math.trunc(amount)
+  const amountSat = utils.currencies.fiatToSats(amount, currency)
+  if (!Number.isInteger(amountSat) || amountSat <= 0) {
+    throw new Error('amount must convert to at least one sat.')
+  }
+  return amountSat
 }
 
 function bitcoinUsdRate() {
