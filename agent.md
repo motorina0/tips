@@ -89,6 +89,10 @@ Development files:
 - Browser JS must be compatible with the sandbox iframe CSP. Do not introduce
   runtime template compilation, `eval`, `new Function`, inline event handlers,
   or other code paths that require `unsafe-eval`.
+- The iframe sandbox does not grant `allow-forms`. Do not use native `<form>`
+  submission or submit buttons in extension iframe pages. Use inert containers
+  and `type="button"` controls, then handle actions through JavaScript and the
+  bridge SDK.
 - If routes, exports, events, permissions, or public fields change, update
   `config.json`.
 - If stored data shape changes, update `storage/schema.json` and add a new
@@ -227,6 +231,11 @@ compile strings as code, `eval`, `new Function`, or inline `onclick`/event
 handler attributes. If using Vue in iframe pages, use render functions,
 precompiled templates, or the template pattern already used by the selected
 extension scaffold. Plain DOM rendering is also fine.
+
+The iframe sandbox intentionally does not allow native form submission. Avoid
+`<form>` elements, submit buttons, and submit event workflows in extension UI.
+Use `<div>` containers, explicit `type="button"` buttons, and JavaScript click
+handlers that call the extension bridge instead.
 
 ## WASM Host API
 
