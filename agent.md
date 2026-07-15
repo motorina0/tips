@@ -86,6 +86,9 @@ Development files:
   through business logic.
 - If browser behavior changes, edit `static/admin.js`, `static/public.js`,
   `static/app.css`, or the configured files under `ui/`.
+- Browser JS must be compatible with the sandbox iframe CSP. Do not introduce
+  runtime template compilation, `eval`, `new Function`, inline event handlers,
+  or other code paths that require `unsafe-eval`.
 - If routes, exports, events, permissions, or public fields change, update
   `config.json`.
 - If stored data shape changes, update `storage/schema.json` and add a new
@@ -217,6 +220,13 @@ check message sources, and keep the iframe sandbox model intact.
 
 Do not rely on LNbits cookies inside the iframe. The iframe may be sandboxed
 without same-origin cookie access.
+
+The iframe CSP intentionally does not allow `unsafe-eval`. Do not use Vue
+runtime templates such as `Vue.createApp({ template: "..." })`, DOM APIs that
+compile strings as code, `eval`, `new Function`, or inline `onclick`/event
+handler attributes. If using Vue in iframe pages, use render functions,
+precompiled templates, or the template pattern already used by the selected
+extension scaffold. Plain DOM rendering is also fine.
 
 ## WASM Host API
 
