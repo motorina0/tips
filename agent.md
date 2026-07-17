@@ -45,6 +45,7 @@ dev/
 Core runtime files:
 
 - `config.json`: declares routes, exports, permissions, and events.
+- `manifest.json`: declares extension repository listing metadata.
 - `wasm/module.wasm`: compiled extension module loaded by LNbits.
 - `wasm/lnbits-extension.wit`: host/import/export interface used to build the
   WASM component.
@@ -72,6 +73,30 @@ Development files:
 - `static/admin.html`, `static/public.html`, and `static/index.html` may exist
   for compatibility or older layouts. The active iframe entrypoints are the
   files referenced by `ui_routes[*].entrypoint`.
+
+## Manifest Contract
+
+`manifest.json` is repository listing metadata used for extension discovery. It
+is not the runtime extension config.
+
+For a single extension repository, use this shape:
+
+```json
+{
+  "repos": [
+    {
+      "id": "<extension-id>",
+      "organisation": "<github-org-or-user>",
+      "repository": "<github-repository>"
+    }
+  ]
+}
+```
+
+The `id` value must match the extension folder name and `config.json` id. Do not
+put runtime fields such as `name`, `short_description`, `version`, `tile`,
+routes, WASM exports, events, or permissions in `manifest.json`; those belong in
+`config.json`.
 
 ## Editing Rules For Agents
 
