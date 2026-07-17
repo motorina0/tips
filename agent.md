@@ -86,6 +86,9 @@ Development files:
   through business logic.
 - If browser behavior changes, edit `static/admin.js`, `static/public.js`,
   `static/app.css`, or the configured files under `ui/`.
+- Do not add or reference SVG files or SVG-rendered UI. Use PNG/WebP/JPEG for
+  image assets and canvas or plain HTML/CSS for generated graphics; SVG is not
+  allowed because it is a security-sensitive format.
 - Browser JS must be compatible with the sandbox iframe CSP. Do not introduce
   runtime template compilation, `eval`, `new Function`, inline event handlers,
   or other code paths that require `unsafe-eval`.
@@ -236,6 +239,15 @@ The iframe sandbox intentionally does not allow native form submission. Avoid
 `<form>` elements, submit buttons, and submit event workflows in extension UI.
 Use `<div>` containers, explicit `type="button"` buttons, and JavaScript click
 handlers that call the extension bridge instead.
+
+Opening a new browser tab from inside the iframe must go through the parent
+bridge. Do not call `window.open()` directly from extension UI code. Use the
+browser SDK helper `client.openNewTab(url)`, which sends
+`navigation.open_new_tab` to the LNbits wrapper. The wrapper validates HTTP(S)
+URLs, shows the user a confirmation dialog with the visible URL, and warns when
+the target is not on the same domain as the parent LNbits page. Treat rejection
+as a normal user cancellation path and surface errors with the existing
+notification helper.
 
 ## WASM Host API
 

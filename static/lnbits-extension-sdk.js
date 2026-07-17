@@ -19,6 +19,13 @@
         })
       },
 
+      openNewTab(url) {
+        return bridgeRequest({
+          action: 'navigation.open_new_tab',
+          url
+        })
+      },
+
       createJar(payload) {
         return request(`${baseUrl}/jars`, {
           method: 'POST',
