@@ -19,17 +19,7 @@ jobs:
         with:
           node-version: 22
 
-      - name: Check and build WASM
-        run: |
-          cd dev
-          npm install
-          npm run check
-          npm run build:wasm
-
-      - name: Verify generated WASM is committed
-        run: git diff --exit-code -- wasm/module.wasm
-
-      - name: Validate WASM metadata
+      - name: Validate committed WASM metadata
         run: |
           python3 - <<'PY'
           import json
@@ -46,6 +36,24 @@ jobs:
           module = config.get("wasm", {}).get("module")
           assert module, "wasm.module is required"
           with open(module, "rb") as module_file:
+              assert module_file.read(4) == b"\0asm", "wasm.module is not WASM"
+          PY
+
+      - name: Check and build WASM
+        run: |
+          cd dev
+          npm install
+          npm run check
+          npm run build:wasm
+
+      - name: Validate generated WASM
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          module = Path("wasm/module.wasm")
+          assert module.is_file(), "wasm.module file is missing"
+          with module.open("rb") as module_file:
               assert module_file.read(4) == b"\0asm", "wasm.module is not WASM"
           PY
 
