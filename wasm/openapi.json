@@ -1,0 +1,1323 @@
+{
+  "schemas": {
+    "ApiErrorResult": {
+      "type": "object",
+      "required": ["ok", "error"],
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "enum": [false],
+          "description": "Whether the WASM extension handler completed successfully."
+        },
+        "error": {
+          "type": "string",
+          "description": "Human-readable error returned by the extension."
+        }
+      }
+    },
+    "HttpError": {
+      "type": "object",
+      "properties": {
+        "detail": {
+          "type": "string"
+        }
+      }
+    },
+    "PaymentMethod": {
+      "type": "string",
+      "enum": ["lightning", "onchain"],
+      "description": "How the tip jar receives tips."
+    },
+    "PlatformSupportMode": {
+      "type": "string",
+      "enum": ["none", "platform"],
+      "description": "Whether a percentage of Lightning tips is paid to a platform support LNURL."
+    },
+    "TipJarBaseRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Optional caller-supplied jar ID. Non alphanumeric characters are removed."
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Tip jar title."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 280,
+          "description": "Public tip jar description."
+        },
+        "currency": {
+          "type": "string",
+          "maxLength": 8,
+          "description": "Default amount currency. Use sat for satoshis."
+        },
+        "slug": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Optional URL-friendly slug stored with the jar."
+        },
+        "suggestedAmounts": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "description": "Suggested tip amounts in the selected currency."
+        },
+        "thankYouMessage": {
+          "type": "string",
+          "maxLength": 160,
+          "description": "Message shown after a successful tip."
+        },
+        "platformSupportMode": {
+          "$ref": "#/schemas/PlatformSupportMode"
+        },
+        "platformSupportEnabled": {
+          "type": "boolean",
+          "description": "Legacy flag for enabling platform support."
+        },
+        "platformSupportPercentage": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Percent of each Lightning tip paid to the support LNURL."
+        },
+        "platformSupportLnurl": {
+          "type": "string",
+          "maxLength": 2048,
+          "description": "Lightning Address or LNURL used for platform support payments."
+        }
+      }
+    },
+    "LightningTipJarRequest": {
+      "allOf": [
+        {
+          "$ref": "#/schemas/TipJarBaseRequest"
+        },
+        {
+          "type": "object",
+          "required": ["paymentMethod", "walletId"],
+          "properties": {
+            "paymentMethod": {
+              "type": "string",
+              "enum": ["lightning"]
+            },
+            "walletId": {
+              "type": "string",
+              "maxLength": 128,
+              "description": "LNbits wallet ID that receives Lightning invoices."
+            },
+            "walletName": {
+              "type": "string",
+              "maxLength": 120,
+              "description": "Display name for the selected LNbits wallet."
+            }
+          }
+        }
+      ]
+    },
+    "OnchainTipJarRequest": {
+      "allOf": [
+        {
+          "$ref": "#/schemas/TipJarBaseRequest"
+        },
+        {
+          "type": "object",
+          "required": ["paymentMethod", "watchonlyWalletId"],
+          "properties": {
+            "paymentMethod": {
+              "type": "string",
+              "enum": ["onchain"]
+            },
+            "watchonlyWalletId": {
+              "type": "string",
+              "maxLength": 128,
+              "description": "Watchonly wallet ID used to generate receive addresses."
+            },
+            "watchonlyWalletName": {
+              "type": "string",
+              "maxLength": 120,
+              "description": "Display name for the selected Watchonly wallet."
+            }
+          }
+        }
+      ]
+    },
+    "TipJarRequest": {
+      "oneOf": [
+        {
+          "$ref": "#/schemas/LightningTipJarRequest"
+        },
+        {
+          "$ref": "#/schemas/OnchainTipJarRequest"
+        }
+      ]
+    },
+    "TipJar": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "description",
+        "paymentMethod",
+        "currency",
+        "walletId",
+        "watchonlyWalletId",
+        "walletName",
+        "onchainAddress",
+        "slug",
+        "suggestedAmounts",
+        "thankYouMessage",
+        "platformSupportMode",
+        "platformSupportPercentage",
+        "platformSupportLnurl",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Tip jar ID."
+        },
+        "title": {
+          "type": "string",
+          "description": "Tip jar title."
+        },
+        "description": {
+          "type": "string",
+          "description": "Public tip jar description."
+        },
+        "paymentMethod": {
+          "$ref": "#/schemas/PaymentMethod"
+        },
+        "currency": {
+          "type": "string",
+          "description": "Default amount currency."
+        },
+        "walletId": {
+          "type": "string",
+          "description": "LNbits wallet ID for Lightning jars, otherwise empty."
+        },
+        "watchonlyWalletId": {
+          "type": "string",
+          "description": "Watchonly wallet ID for onchain jars, otherwise empty."
+        },
+        "walletName": {
+          "type": "string",
+          "description": "Display name for the selected wallet."
+        },
+        "onchainAddress": {
+          "type": "string",
+          "description": "Current onchain receive address for onchain jars."
+        },
+        "slug": {
+          "type": "string",
+          "description": "URL-friendly jar slug."
+        },
+        "suggestedAmounts": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Suggested tip amounts in the jar currency."
+        },
+        "thankYouMessage": {
+          "type": "string",
+          "description": "Message shown after a successful tip."
+        },
+        "platformSupportMode": {
+          "$ref": "#/schemas/PlatformSupportMode"
+        },
+        "platformSupportPercentage": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percent of each Lightning tip paid to platform support."
+        },
+        "platformSupportLnurl": {
+          "type": "string",
+          "description": "Platform support Lightning Address or LNURL."
+        },
+        "createdAt": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Creation timestamp returned by the extension runtime."
+        },
+        "updatedAt": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Last update timestamp returned by the extension runtime."
+        }
+      }
+    },
+    "Tip": {
+      "type": "object",
+      "required": [
+        "id",
+        "jarId",
+        "amountSat",
+        "name",
+        "message",
+        "paid",
+        "createdAt",
+        "paidAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Tip row ID."
+        },
+        "jarId": {
+          "type": "string",
+          "description": "Tip jar ID."
+        },
+        "amountSat": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 0,
+          "description": "Tip amount in satoshis."
+        },
+        "name": {
+          "type": "string",
+          "description": "Tipper display name."
+        },
+        "message": {
+          "type": "string",
+          "description": "Tipper message."
+        },
+        "paid": {
+          "type": "boolean",
+          "description": "Whether the tip invoice was paid."
+        },
+        "createdAt": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Creation timestamp returned by the extension runtime."
+        },
+        "paidAt": {
+          "type": "integer",
+          "format": "int64",
+          "nullable": true,
+          "description": "Payment timestamp, or null/empty before payment."
+        }
+      }
+    },
+    "PrivateTip": {
+      "allOf": [
+        {
+          "$ref": "#/schemas/Tip"
+        },
+        {
+          "type": "object",
+          "required": ["jarTitle", "paymentHash"],
+          "properties": {
+            "jarTitle": {
+              "type": "string",
+              "description": "Title of the jar that received the tip."
+            },
+            "paymentHash": {
+              "type": "string",
+              "description": "Lightning payment hash for the tip."
+            }
+          }
+        }
+      ]
+    },
+    "JarResponse": {
+      "type": "object",
+      "required": ["ok", "data"],
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "enum": [true]
+        },
+        "data": {
+          "$ref": "#/schemas/TipJar"
+        }
+      }
+    },
+    "JarListData": {
+      "type": "object",
+      "required": ["jars", "total"],
+      "properties": {
+        "jars": {
+          "type": "array",
+          "items": {
+            "$ref": "#/schemas/TipJar"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total matching jars before pagination."
+        }
+      }
+    },
+    "JarListResponse": {
+      "type": "object",
+      "required": ["ok", "data"],
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "enum": [true]
+        },
+        "data": {
+          "$ref": "#/schemas/JarListData"
+        }
+      }
+    },
+    "DeleteJarData": {
+      "type": "object",
+      "required": ["id", "deleted"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Deleted tip jar ID."
+        },
+        "deleted": {
+          "type": "boolean",
+          "enum": [true],
+          "description": "Whether the jar was deleted."
+        }
+      }
+    },
+    "DeleteJarResponse": {
+      "type": "object",
+      "required": ["ok", "data"],
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "enum": [true]
+        },
+        "data": {
+          "$ref": "#/schemas/DeleteJarData"
+        }
+      }
+    },
+    "TipListData": {
+      "type": "object",
+      "required": ["jar", "tips", "total"],
+      "properties": {
+        "jar": {
+          "$ref": "#/schemas/TipJar"
+        },
+        "tips": {
+          "type": "array",
+          "items": {
+            "$ref": "#/schemas/PrivateTip"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total matching tips before pagination."
+        }
+      }
+    },
+    "TipListResponse": {
+      "type": "object",
+      "required": ["ok", "data"],
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "enum": [true]
+        },
+        "data": {
+          "$ref": "#/schemas/TipListData"
+        }
+      }
+    },
+    "Wallet": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "LNbits wallet ID."
+        },
+        "name": {
+          "type": "string",
+          "description": "Wallet display name."
+        },
+        "currency": {
+          "type": "string",
+          "nullable": true,
+          "description": "Wallet fiat currency, if configured."
+        }
+      }
+    },
+    "WalletListData": {
+      "type": "object",
+      "required": ["wallets"],
+      "properties": {
+        "wallets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/schemas/Wallet"
+          }
+        }
+      }
+    },
+    "WalletListResponse": {
+      "type": "object",
+      "required": ["ok", "data"],
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "enum": [true]
+        },
+        "data": {
+          "$ref": "#/schemas/WalletListData"
+        }
+      }
+    },
+    "WatchonlyWallet": {
+      "type": "object",
+      "required": ["id", "title", "balance", "network"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Watchonly wallet ID."
+        },
+        "title": {
+          "type": "string",
+          "description": "Watchonly wallet title."
+        },
+        "balance": {
+          "type": "number",
+          "description": "Watchonly wallet balance as returned by the Watchonly extension."
+        },
+        "network": {
+          "type": "string",
+          "description": "Bitcoin network name."
+        }
+      }
+    },
+    "WatchonlyWalletListData": {
+      "type": "object",
+      "required": ["wallets"],
+      "properties": {
+        "wallets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/schemas/WatchonlyWallet"
+          }
+        }
+      }
+    },
+    "WatchonlyWalletListResponse": {
+      "type": "object",
+      "required": ["ok", "data"],
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "enum": [true]
+        },
+        "data": {
+          "$ref": "#/schemas/WatchonlyWalletListData"
+        }
+      }
+    },
+    "MempoolRate": {
+      "type": "object",
+      "required": ["source", "currency", "flag", "price", "fetchedAt"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "External rate source."
+        },
+        "currency": {
+          "type": "string",
+          "description": "Currency code."
+        },
+        "flag": {
+          "type": "string",
+          "description": "Display flag returned by the extension."
+        },
+        "price": {
+          "type": "number",
+          "description": "Bitcoin price in the currency."
+        },
+        "fetchedAt": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Rate timestamp."
+        }
+      }
+    },
+    "BitcoinRate": {
+      "type": "object",
+      "required": [
+        "source",
+        "currency",
+        "btcUsd",
+        "satsPerUsd",
+        "sampleAmountSat",
+        "sampleAmountUsd",
+        "fetchedAt",
+        "externalRates",
+        "externalRateError",
+        "externalRateSource"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Primary rate source."
+        },
+        "currency": {
+          "type": "string",
+          "description": "Primary fiat currency."
+        },
+        "btcUsd": {
+          "type": "number",
+          "description": "Bitcoin price in USD."
+        },
+        "satsPerUsd": {
+          "type": "integer",
+          "description": "Satoshis per USD."
+        },
+        "sampleAmountSat": {
+          "type": "integer",
+          "description": "Sample amount in satoshis."
+        },
+        "sampleAmountUsd": {
+          "type": "number",
+          "description": "Sample amount converted to USD."
+        },
+        "fetchedAt": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Primary rate timestamp."
+        },
+        "externalRates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/schemas/MempoolRate"
+          },
+          "description": "Optional external rates from mempool.space."
+        },
+        "externalRateError": {
+          "type": "string",
+          "description": "External rate fetch error, if any."
+        },
+        "externalRateSource": {
+          "type": "string",
+          "description": "External rate source name."
+        }
+      }
+    },
+    "BitcoinRateResponse": {
+      "type": "object",
+      "required": ["ok", "data"],
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "enum": [true]
+        },
+        "data": {
+          "$ref": "#/schemas/BitcoinRate"
+        }
+      }
+    },
+    "CurrencyListData": {
+      "type": "object",
+      "required": ["currencies"],
+      "properties": {
+        "currencies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Supported currency codes, including sat."
+        }
+      }
+    },
+    "CurrencyListResponse": {
+      "type": "object",
+      "required": ["ok", "data"],
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "enum": [true]
+        },
+        "data": {
+          "$ref": "#/schemas/CurrencyListData"
+        }
+      }
+    },
+    "PublicJarData": {
+      "type": "object",
+      "required": ["jar", "tips", "currencies"],
+      "properties": {
+        "jar": {
+          "$ref": "#/schemas/TipJar"
+        },
+        "tips": {
+          "type": "array",
+          "items": {
+            "$ref": "#/schemas/Tip"
+          },
+          "description": "Public recent tips. The current implementation returns an empty array."
+        },
+        "currencies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Currencies available to the public tip form."
+        }
+      }
+    },
+    "PublicJarResponse": {
+      "type": "object",
+      "required": ["ok", "data"],
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "enum": [true]
+        },
+        "data": {
+          "$ref": "#/schemas/PublicJarData"
+        }
+      }
+    },
+    "CreateTipInvoiceRequest": {
+      "type": "object",
+      "required": ["jarId", "amount"],
+      "properties": {
+        "jarId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Public tip jar ID."
+        },
+        "amount": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Tip amount in the selected currency."
+        },
+        "amountSat": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Legacy satoshi amount field used when amount is omitted."
+        },
+        "currency": {
+          "type": "string",
+          "maxLength": 8,
+          "description": "Currency for amount. Defaults to the jar currency."
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Tipper display name."
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 280,
+          "description": "Tipper message included in the invoice memo."
+        }
+      }
+    },
+    "TipInvoiceData": {
+      "type": "object",
+      "required": ["tipId", "paymentHash", "paymentRequest", "checkingId"],
+      "properties": {
+        "tipId": {
+          "type": "string",
+          "description": "Pending tip row ID."
+        },
+        "paymentHash": {
+          "type": "string",
+          "description": "Payment hash for the tip invoice."
+        },
+        "paymentRequest": {
+          "type": "string",
+          "description": "Bolt11 payment request for the tip invoice."
+        },
+        "checkingId": {
+          "type": "string",
+          "description": "LNbits checking ID for the tip invoice."
+        }
+      }
+    },
+    "TipInvoiceResponse": {
+      "type": "object",
+      "required": ["ok", "data"],
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "enum": [true]
+        },
+        "data": {
+          "$ref": "#/schemas/TipInvoiceData"
+        }
+      }
+    }
+  },
+  "commonResponses": {
+    "400": {
+      "description": "Invalid request.",
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "#/schemas/HttpError"
+          }
+        }
+      }
+    },
+    "403": {
+      "description": "The request is not allowed for the current user.",
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "#/schemas/HttpError"
+          }
+        }
+      }
+    },
+    "404": {
+      "description": "Route, export, or tip jar was not found.",
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "#/schemas/HttpError"
+          }
+        }
+      }
+    },
+    "413": {
+      "description": "Request body exceeds the WASM extension size limit.",
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "#/schemas/HttpError"
+          }
+        }
+      }
+    }
+  },
+  "routes": {
+    "create-tip-jar": {
+      "summary": "Create tip jar",
+      "description": "Creates a Lightning or onchain tip jar owned by the authenticated user.",
+      "operationId": "tips_create_tip_jar",
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/schemas/TipJarRequest"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Created tip jar or extension-level error.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/schemas/JarResponse"
+                  },
+                  {
+                    "$ref": "#/schemas/ApiErrorResult"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "400": {
+          "$ref": "#/commonResponses/400"
+        },
+        "403": {
+          "$ref": "#/commonResponses/403"
+        },
+        "413": {
+          "$ref": "#/commonResponses/413"
+        }
+      }
+    },
+    "update-tip-jar": {
+      "summary": "Update tip jar",
+      "description": "Updates a tip jar owned by the authenticated user.",
+      "operationId": "tips_update_tip_jar",
+      "parameters": [
+        {
+          "name": "jar_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Tip jar ID."
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/schemas/TipJarRequest"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Updated tip jar or extension-level error.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/schemas/JarResponse"
+                  },
+                  {
+                    "$ref": "#/schemas/ApiErrorResult"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "400": {
+          "$ref": "#/commonResponses/400"
+        },
+        "403": {
+          "$ref": "#/commonResponses/403"
+        },
+        "404": {
+          "$ref": "#/commonResponses/404"
+        },
+        "413": {
+          "$ref": "#/commonResponses/413"
+        }
+      }
+    },
+    "list-tip-jars": {
+      "summary": "List tip jars",
+      "description": "Returns the authenticated user's tip jars.",
+      "operationId": "tips_list_tip_jars",
+      "parameters": [
+        {
+          "name": "search",
+          "in": "query",
+          "schema": {
+            "type": "string"
+          },
+          "description": "Search text for jar title, description, wallet names, or thank-you message."
+        },
+        {
+          "name": "sortBy",
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "enum": ["", "title"]
+          },
+          "description": "Sort field. Unsupported values use the default order."
+        },
+        {
+          "name": "descending",
+          "in": "query",
+          "schema": {
+            "type": "boolean"
+          },
+          "description": "Sort descending when true."
+        },
+        {
+          "name": "page",
+          "in": "query",
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1
+          }
+        },
+        {
+          "name": "rowsPerPage",
+          "in": "query",
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 10
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Tip jar list or extension-level error.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/schemas/JarListResponse"
+                  },
+                  {
+                    "$ref": "#/schemas/ApiErrorResult"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "400": {
+          "$ref": "#/commonResponses/400"
+        },
+        "403": {
+          "$ref": "#/commonResponses/403"
+        }
+      }
+    },
+    "delete-tip-jar": {
+      "summary": "Delete tip jar",
+      "description": "Deletes a tip jar owned by the authenticated user if it has no paid tips.",
+      "operationId": "tips_delete_tip_jar",
+      "parameters": [
+        {
+          "name": "jar_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Tip jar ID."
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Deletion result or extension-level error.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/schemas/DeleteJarResponse"
+                  },
+                  {
+                    "$ref": "#/schemas/ApiErrorResult"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "400": {
+          "$ref": "#/commonResponses/400"
+        },
+        "403": {
+          "$ref": "#/commonResponses/403"
+        },
+        "404": {
+          "$ref": "#/commonResponses/404"
+        }
+      }
+    },
+    "list-tip-jar-tips": {
+      "summary": "List tips",
+      "description": "Returns private tip rows for one authenticated user's tip jar.",
+      "operationId": "tips_list_tip_jar_tips",
+      "parameters": [
+        {
+          "name": "jar_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Tip jar ID."
+        },
+        {
+          "name": "search",
+          "in": "query",
+          "schema": {
+            "type": "string"
+          },
+          "description": "Search text for tipper name, message, or payment hash."
+        },
+        {
+          "name": "sortBy",
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "amountSat",
+              "createdAt",
+              "jarTitle",
+              "name",
+              "paid",
+              "paidAt",
+              "paymentHash"
+            ]
+          },
+          "description": "Sort field."
+        },
+        {
+          "name": "descending",
+          "in": "query",
+          "schema": {
+            "type": "boolean"
+          },
+          "description": "Sort descending when true."
+        },
+        {
+          "name": "page",
+          "in": "query",
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1
+          }
+        },
+        {
+          "name": "rowsPerPage",
+          "in": "query",
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 10
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Tip list or extension-level error.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/schemas/TipListResponse"
+                  },
+                  {
+                    "$ref": "#/schemas/ApiErrorResult"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "400": {
+          "$ref": "#/commonResponses/400"
+        },
+        "403": {
+          "$ref": "#/commonResponses/403"
+        },
+        "404": {
+          "$ref": "#/commonResponses/404"
+        }
+      }
+    },
+    "list-tip-wallets": {
+      "summary": "List wallets",
+      "description": "Returns LNbits wallets available to the authenticated user.",
+      "operationId": "tips_list_tip_wallets",
+      "responses": {
+        "200": {
+          "description": "Wallet list or extension-level error.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/schemas/WalletListResponse"
+                  },
+                  {
+                    "$ref": "#/schemas/ApiErrorResult"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "400": {
+          "$ref": "#/commonResponses/400"
+        },
+        "403": {
+          "$ref": "#/commonResponses/403"
+        }
+      }
+    },
+    "list-tip-watchonly-wallets": {
+      "summary": "List Watchonly wallets",
+      "description": "Returns Watchonly extension wallets available for onchain tip jars.",
+      "operationId": "tips_list_tip_watchonly_wallets",
+      "responses": {
+        "200": {
+          "description": "Watchonly wallet list or extension-level error.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/schemas/WatchonlyWalletListResponse"
+                  },
+                  {
+                    "$ref": "#/schemas/ApiErrorResult"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "400": {
+          "$ref": "#/commonResponses/400"
+        },
+        "403": {
+          "$ref": "#/commonResponses/403"
+        }
+      }
+    },
+    "get-bitcoin-rate": {
+      "summary": "Get Bitcoin rate",
+      "description": "Returns Bitcoin price data from LNbits with optional mempool.space reference rates.",
+      "operationId": "tips_get_bitcoin_rate",
+      "responses": {
+        "200": {
+          "description": "Bitcoin rate data or extension-level error.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/schemas/BitcoinRateResponse"
+                  },
+                  {
+                    "$ref": "#/schemas/ApiErrorResult"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "400": {
+          "$ref": "#/commonResponses/400"
+        },
+        "403": {
+          "$ref": "#/commonResponses/403"
+        }
+      }
+    },
+    "list-tip-currencies": {
+      "summary": "List currencies",
+      "description": "Returns currencies supported by LNbits conversion utilities.",
+      "operationId": "tips_list_tip_currencies",
+      "responses": {
+        "200": {
+          "description": "Currency list or extension-level error.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/schemas/CurrencyListResponse"
+                  },
+                  {
+                    "$ref": "#/schemas/ApiErrorResult"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "400": {
+          "$ref": "#/commonResponses/400"
+        }
+      }
+    },
+    "get-public-tip-jar": {
+      "summary": "Get public tip jar",
+      "description": "Returns public details for a tip jar and currency options for the public tip form.",
+      "operationId": "tips_get_public_tip_jar",
+      "parameters": [
+        {
+          "name": "jar_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Tip jar ID."
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Public tip jar details or extension-level error.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/schemas/PublicJarResponse"
+                  },
+                  {
+                    "$ref": "#/schemas/ApiErrorResult"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "400": {
+          "$ref": "#/commonResponses/400"
+        },
+        "404": {
+          "$ref": "#/commonResponses/404"
+        }
+      }
+    },
+    "create-tip-invoice": {
+      "summary": "Create tip invoice",
+      "description": "Creates a public Lightning invoice for a tip jar and stores a pending tip row.",
+      "operationId": "tips_create_tip_invoice",
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/schemas/CreateTipInvoiceRequest"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Tip invoice details or extension-level error.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/schemas/TipInvoiceResponse"
+                  },
+                  {
+                    "$ref": "#/schemas/ApiErrorResult"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "400": {
+          "$ref": "#/commonResponses/400"
+        },
+        "404": {
+          "$ref": "#/commonResponses/404"
+        },
+        "413": {
+          "$ref": "#/commonResponses/413"
+        }
+      }
+    }
+  }
+}
