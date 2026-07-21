@@ -21,6 +21,7 @@ manifest.json               # extension repository listing metadata
 wasm/
   module.wasm               # generated WASM component loaded by LNbits
   lnbits-extension.wit      # host/import/export interface
+  openapi.json              # optional OpenAPI operation fragments for API docs
 ui/
   admin.html                # configured private iframe entrypoint
   public.html               # configured public iframe entrypoint
@@ -49,6 +50,8 @@ Core runtime files:
 - `wasm/module.wasm`: compiled extension module loaded by LNbits.
 - `wasm/lnbits-extension.wit`: host/import/export interface used to build the
   WASM component.
+- `wasm/openapi.json`: optional API documentation artifact consumed by LNbits
+  when `config.json` points at it with top-level `openapi`.
 - `ui/*.html`: sandboxed iframe entrypoints served by LNbits.
 - `static/*`: browser assets served under `/ext-assets/{ext_id}/...`.
 - `storage/schema.json`: current storage schema.
@@ -152,10 +155,128 @@ Common optional fields:
   paid.
 - `wasm.resource_limits.max_response_bytes`: maximum serialized WASM response
   size.
+- `openapi`: relative path to a JSON OpenAPI documentation artifact, usually
+  `wasm/openapi.json`.
 
 Do not put build-only metadata in `config.json` unless LNbits core consumes it.
 Build commands belong to the selected language template, for example in a
 toolchain file, a Makefile, or developer docs.
+
+## OpenAPI Documentation Artifacts
+
+WASM exports receive and return JSON strings, so LNbits cannot infer rich
+request and response schemas from `lnbits-extension.wit` alone. The WIT file is
+useful for finding export names, but field-level OpenAPI schemas must be
+derived from the extension source, validation helpers, storage schema, and
+public response objects.
+
+Put the documentation artifact under the extension root, conventionally at
+`wasm/openapi.json`, and reference it from top-level `config.json`:
+
+```json
+{
+  "openapi": "wasm/openapi.json",
+  "api_routes": [
+    {
+      "method": "POST",
+      "path": "/items",
+      "export": "create-item",
+      "auth": "user"
+    }
+  ]
+}
+```
+
+The artifact is not a full OpenAPI document. It is an LNbits metadata file with
+reusable schemas and OpenAPI Operation Objects:
+
+```json
+{
+  "schemas": {
+    "CreateItemRequest": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string"}
+      }
+    }
+  },
+  "commonResponses": {
+    "400": {
+      "description": "Invalid request payload.",
+      "content": {
+        "application/json": {
+          "schema": {"type": "object", "properties": {"detail": {"type": "string"}}}
+        }
+      }
+    }
+  },
+  "routes": {
+    "create-item": {
+      "summary": "Create item",
+      "description": "Creates an item for the authenticated user.",
+      "operationId": "myextension_create_item",
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/schemas/CreateItemRequest"}
+          }
+        }
+      },
+      "responses": {
+        "200": {"description": "Created item."},
+        "400": {"$ref": "#/commonResponses/400"}
+      }
+    }
+  }
+}
+```
+
+Route documentation is inferred from `api_routes[*].export`. LNbits first looks
+for `#/routes/{export}` in the configured document. It also supports a
+normalized fallback where non-alphanumeric characters become underscores, but
+new artifacts should use the exact export name as the route key.
+
+Use a route-level `openapi` override only when inference is ambiguous, for
+example when the same export is intentionally mounted on multiple routes:
+
+```json
+{
+  "method": "GET",
+  "path": "/items/{item_id}/history",
+  "export": "list-items",
+  "auth": "user",
+  "path_params": {"item_id": "itemId"},
+  "openapi": "#/routes/list-item-history"
+}
+```
+
+A route-level value may be a fragment in the top-level document
+(`#/routes/list-item-history`) or a relative JSON file reference
+(`wasm/admin-openapi.json#/routes/list-item-history`). Keep references local to
+the extension root. Missing files, missing route keys, and invalid fragments are
+ignored by LNbits so extension install and loading continue with generic docs.
+
+Operation fragments should include:
+
+- `summary`: short action label shown by Swagger UI.
+- `description`: behavior details and important validation constraints.
+- `operationId`: stable unique id, usually `{extension_id}_{export_name}` with
+  separators normalized to underscores.
+- `parameters`: path and query parameters. Use URL parameter names such as
+  `item_id`, not payload names such as `itemId`.
+- `requestBody`: JSON body schema for `POST`, `PUT`, and `PATCH` routes.
+- `responses`: at least a `200` response. Include the extension's
+  `{ok, data, error}` envelope if the handler returns one.
+
+Do not set `tags` in artifacts. LNbits supplies the extension display name as
+the OpenAPI tag so all endpoints for one extension are grouped together.
+
+Use local `$ref` values such as `#/schemas/Thing` and
+`#/commonResponses/400`. LNbits inlines local refs into the FastAPI route
+metadata so Swagger UI and ReDoc can display useful schemas without depending
+on external documents.
 
 ## WASM Exports
 
@@ -510,6 +631,7 @@ Useful checks:
 ```bash
 python -m json.tool <extension-root>/config.json
 python -m json.tool <extension-root>/storage/schema.json
+python -m json.tool <extension-root>/wasm/openapi.json
 cd <extension-root>/dev && <language-check-command>
 cd <extension-root>/dev && <language-build-command>
 ```
