@@ -2,7 +2,7 @@
   "id": "tips",
   "name": "Tips",
   "short_description": "Receive Lightning tips with short messages.",
-  "version": "0.0.1",
+  "version": "0.1.3",
   "min_lnbits_version": "1.5.5",
 
   "extension_type": "wasm",
